@@ -7,8 +7,9 @@ into the modern SpatialData/Zarr format with automatic pixel size detection.
 
 __version__ = "1.8.3"
 
-# Import readers to trigger format detector registration
-from . import readers  # This triggers the format detector registrations
+# Import readers and converters to trigger registration
+from . import converters  # This triggers converter registrations
+from . import readers  # This triggers reader registrations
 from .convert import convert_msi
 
 # Import key components - avoid wildcard imports
