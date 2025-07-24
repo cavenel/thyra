@@ -5,6 +5,13 @@ This package provides tools for converting MSI data from various formats (ImzML,
 into the modern SpatialData/Zarr format with automatic pixel size detection.
 """
 
+# Suppress known warnings from dependencies
+import warnings
+
+warnings.filterwarnings("ignore", category=FutureWarning, module="dask")
+warnings.filterwarnings("ignore", category=FutureWarning, module="spatialdata")
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="numba")
+
 __version__ = "1.8.3"
 
 # Import readers and converters to trigger registration
