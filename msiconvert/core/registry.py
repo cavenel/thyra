@@ -1,142 +1,132 @@
 # msiconvert/core/registry.py
 import logging
-from functools import lru_cache
 from pathlib import Path
-from typing import Callable, Dict, Type
+from threading import RLock
+from typing import Dict, Type
 
 from .base_converter import BaseMSIConverter
 from .base_reader import BaseMSIReader
 
-reader_registry: Dict[str, Type[BaseMSIReader]] = {}
-converter_registry: Dict[str, Type[BaseMSIConverter]] = {}
-format_detectors: Dict[str, Callable[[Path], bool]] = {}
+
+class MSIRegistry:
+    """Minimal thread-safe registry with extension-based format detection."""
+
+    def __init__(self):
+        self._lock = RLock()
+        self._readers: Dict[str, Type[BaseMSIReader]] = {}
+        self._converters: Dict[str, Type[BaseMSIConverter]] = {}
+        # Simple extension mapping - no complex detection needed!
+        self._extension_to_format = {".imzml": "imzml", ".d": "bruker"}
+
+    def register_reader(
+        self, format_name: str, reader_class: Type[BaseMSIReader]
+    ) -> None:
+        """Register reader class."""
+        with self._lock:
+            self._readers[format_name] = reader_class
+            logging.info(
+                f"Registered reader {reader_class.__name__} for format '{format_name}'"
+            )
+
+    def register_converter(
+        self, format_name: str, converter_class: Type[BaseMSIConverter]
+    ) -> None:
+        """Register converter class."""
+        with self._lock:
+            self._converters[format_name] = converter_class
+            logging.info(
+                f"Registered converter {converter_class.__name__} for format '{format_name}'"
+            )
+
+    def detect_format(self, input_path: Path) -> str:
+        """Ultra-fast format detection via file extension."""
+        if not input_path.exists():
+            raise ValueError(f"Input path does not exist: {input_path}")
+
+        extension = input_path.suffix.lower()
+        format_name = self._extension_to_format.get(extension)
+
+        if not format_name:
+            available = ", ".join(self._extension_to_format.keys())
+            raise ValueError(
+                f"Unsupported file extension '{extension}'. Supported: {available}"
+            )
+
+        # Minimal validation
+        if format_name == "imzml":
+            ibd_path = input_path.with_suffix(".ibd")
+            if not ibd_path.exists():
+                raise ValueError(
+                    f"ImzML file requires corresponding .ibd file: {ibd_path}"
+                )
+        elif format_name == "bruker":
+            if not input_path.is_dir():
+                raise ValueError(
+                    f"Bruker format requires .d directory, got file: {input_path}"
+                )
+            if (
+                not (input_path / "analysis.tsf").exists()
+                and not (input_path / "analysis.tdf").exists()
+            ):
+                raise ValueError(
+                    f"Bruker .d directory missing analysis files: {input_path}"
+                )
+
+        return format_name
+
+    def get_reader_class(self, format_name: str) -> Type[BaseMSIReader]:
+        """Get reader class."""
+        with self._lock:
+            if format_name not in self._readers:
+                available = list(self._readers.keys())
+                raise ValueError(
+                    f"No reader for format '{format_name}'. Available: {available}"
+                )
+            return self._readers[format_name]
+
+    def get_converter_class(self, format_name: str) -> Type[BaseMSIConverter]:
+        """Get converter class."""
+        with self._lock:
+            if format_name not in self._converters:
+                available = list(self._converters.keys())
+                raise ValueError(
+                    f"No converter for format '{format_name}'. Available: {available}"
+                )
+            return self._converters[format_name]
+
+
+# Global registry instance
+_registry = MSIRegistry()
+
+
+# Simple public interface
+def detect_format(input_path: Path) -> str:
+    return _registry.detect_format(input_path)
+
+
+def get_reader_class(format_name: str) -> Type[BaseMSIReader]:
+    return _registry.get_reader_class(format_name)
+
+
+def get_converter_class(format_name: str) -> Type[BaseMSIConverter]:
+    return _registry.get_converter_class(format_name)
 
 
 def register_reader(format_name: str):
-    """Decorator to register a reader class for a specific format."""
+    """Decorator for reader registration."""
 
     def decorator(cls: Type[BaseMSIReader]):
-        if format_name in reader_registry:
-            logging.warning(f"Overwriting existing reader for format '{format_name}'")
-        reader_registry[format_name] = cls
-        logging.info(f"Registered reader {cls.__name__} for format '{format_name}'")
+        _registry.register_reader(format_name, cls)
         return cls
 
     return decorator
 
 
 def register_converter(format_name: str):
-    """Decorator to register a converter class for a specific format."""
+    """Decorator for converter registration."""
 
     def decorator(cls: Type[BaseMSIConverter]):
-        if format_name in converter_registry:
-            logging.warning(
-                f"Overwriting existing converter for format '{format_name}'"
-            )
-        converter_registry[format_name] = cls
-        logging.info(f"Registered converter {cls.__name__} for format '{format_name}'")
+        _registry.register_converter(format_name, cls)
         return cls
 
     return decorator
-
-
-def register_format_detector(format_name: str):
-    """Decorator to register a function that detects a specific format."""
-
-    def decorator(func: Callable[[Path], bool]):
-        format_detectors[format_name] = func
-        return func
-
-    return decorator
-
-
-def get_reader_class(format_name: str) -> Type[BaseMSIReader]:
-    """Get reader class for the specified format."""
-    try:
-        return reader_registry[format_name]
-    except KeyError:
-        raise ValueError(f"No reader registered for format '{format_name}'")
-
-
-def get_converter_class(format_name: str) -> Type[BaseMSIConverter]:
-    """Get converter class for the specified format."""
-    try:
-        return converter_registry[format_name]
-    except KeyError:
-        raise ValueError(f"No converter registered for format '{format_name}'")
-
-
-@lru_cache(maxsize=32)
-def _detect_format_cached(input_path_str: str) -> str:
-    """Cached format detection to avoid repeated file I/O."""
-    return _detect_format_uncached(Path(input_path_str))
-
-
-def _detect_format_uncached(input_path: Path) -> str:
-    """
-    Detect the format of the input data.
-
-    Args:
-        input_path: Path to input file or directory
-
-    Returns:
-        Detected format name
-
-    Raises:
-        ValueError: If format could not be detected
-    """
-    if not input_path.exists():
-        raise ValueError(f"Input path does not exist: {input_path}")
-
-    logging.info(f"Attempting to detect format for: {input_path}")
-    logging.debug(f"File exists: {input_path.exists()}")
-    logging.debug(f"Is file: {input_path.is_file()}")
-    logging.debug(f"Suffix: {input_path.suffix.lower()}")
-
-    # Optimized: exit immediately on first successful detection
-    for format_name, detector in format_detectors.items():
-        logging.debug(f"Checking detector for format: {format_name}")
-        try:
-            if detector(input_path):
-                logging.debug(f"Successfully detected format: {format_name}")
-                return format_name
-        except Exception as e:
-            logging.warning(f"Error in format detector for {format_name}: {e}")
-            continue  # Try next detector
-
-    supported_formats = ", ".join(format_detectors.keys())
-
-    # Provide helpful suggestions based on file extension
-    suggestions = []
-    if input_path.is_file():
-        if input_path.suffix.lower() == ".imzml":
-            ibd_path = input_path.with_suffix(".ibd")
-            if not ibd_path.exists():
-                suggestions.append(
-                    f"ImzML files require a corresponding .ibd file: {ibd_path}"
-                )
-        elif input_path.suffix.lower() not in [".imzml"]:
-            suggestions.append(f"Unsupported file extension: {input_path.suffix}")
-    elif input_path.is_dir():
-        if input_path.suffix.lower() == ".d":
-            if (
-                not (input_path / "analysis.tsf").exists()
-                and not (input_path / "analysis.tdf").exists()
-            ):
-                suggestions.append(
-                    "Bruker .d directories require analysis.tsf or analysis.tdf files"
-                )
-        else:
-            suggestions.append("Only .d directories are supported for Bruker format")
-
-    suggestion_text = "\nSuggestion: " + "; ".join(suggestions) if suggestions else ""
-
-    raise ValueError(
-        f"Unable to detect format for: {input_path}. "
-        f"Supported formats: {supported_formats}.{suggestion_text}"
-    )
-
-
-def detect_format(input_path: Path) -> str:
-    """Public interface with caching for format detection."""
-    return _detect_format_cached(str(input_path))

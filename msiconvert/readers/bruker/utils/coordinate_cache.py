@@ -46,9 +46,13 @@ class CoordinateCache:
         self._dimensions: Optional[Tuple[int, int, int]] = None
         self._is_maldi: Optional[bool] = None
         self._loaded_ranges: Set[Tuple[int, int]] = set()
+        self._coordinate_offsets: Optional[Tuple[int, int, int]] = None
 
         # Check if this is a MALDI dataset
         self._detect_maldi_format()
+
+        # Get coordinate bounds for normalization
+        self._get_coordinate_bounds()
 
         if preload_all:
             self._preload_all_coordinates()
@@ -76,6 +80,39 @@ class CoordinateCache:
         except Exception as e:
             logger.warning(f"Error detecting MALDI format: {e}")
             self._is_maldi = False
+
+    def _get_coordinate_bounds(self) -> None:
+        """Get coordinate bounds for normalization."""
+        if not self._is_maldi:
+            self._coordinate_offsets = (0, 0, 0)
+            return
+
+        try:
+            with sqlite3.connect(str(self.db_path)) as conn:
+                cursor = conn.cursor()
+
+                # Get imaging area bounds from GlobalMetadata
+                cursor.execute(
+                    """
+                    SELECT Key, Value FROM GlobalMetadata
+                    WHERE Key IN ('ImagingAreaMinXIndexPos', 'ImagingAreaMinYIndexPos')
+                """
+                )
+
+                bounds = dict(cursor.fetchall())
+
+                min_x = int(bounds.get("ImagingAreaMinXIndexPos", 0))
+                min_y = int(bounds.get("ImagingAreaMinYIndexPos", 0))
+                min_z = 0
+
+                self._coordinate_offsets = (min_x, min_y, min_z)
+                logger.info(
+                    f"Coordinate offsets for normalization: {self._coordinate_offsets}"
+                )
+
+        except Exception as e:
+            logger.warning(f"Error getting coordinate bounds: {e}")
+            self._coordinate_offsets = (0, 0, 0)
 
     def _preload_all_coordinates(self) -> None:
         """Preload all coordinates for maximum performance."""
@@ -189,7 +226,7 @@ class CoordinateCache:
         # Check if coordinate is already cached
         if frame_id in self._coordinates:
             coord_info = self._coordinates[frame_id]
-            return (coord_info.x, coord_info.y, coord_info.z)
+            return self._normalize_coordinate(coord_info.x, coord_info.y, coord_info.z)
 
         # Try to load a small range around this frame
         batch_size = 100
@@ -201,10 +238,26 @@ class CoordinateCache:
         # Check again after loading
         if frame_id in self._coordinates:
             coord_info = self._coordinates[frame_id]
-            return (coord_info.x, coord_info.y, coord_info.z)
+            return self._normalize_coordinate(coord_info.x, coord_info.y, coord_info.z)
 
         logger.warning(f"Coordinate not found for frame {frame_id}")
         return None
+
+    def _normalize_coordinate(self, x: int, y: int, z: int) -> Tuple[int, int, int]:
+        """
+        Normalize coordinates to 0-based indexing.
+
+        Args:
+            x, y, z: Raw coordinates from database
+
+        Returns:
+            Normalized (x, y, z) coordinates
+        """
+        if self._coordinate_offsets is None:
+            return (x, y, z)
+
+        offset_x, offset_y, offset_z = self._coordinate_offsets
+        return (x - offset_x, y - offset_y, z - offset_z)
 
     def get_coordinates_batch(
         self, frame_ids: List[int]
@@ -225,7 +278,9 @@ class CoordinateCache:
         for frame_id in frame_ids:
             if frame_id in self._coordinates:
                 coord_info = self._coordinates[frame_id]
-                result[frame_id] = (coord_info.x, coord_info.y, coord_info.z)
+                result[frame_id] = self._normalize_coordinate(
+                    coord_info.x, coord_info.y, coord_info.z
+                )
             else:
                 missing_frames.append(frame_id)
 
@@ -255,7 +310,9 @@ class CoordinateCache:
             for frame_id in missing_frames:
                 if frame_id in self._coordinates:
                     coord_info = self._coordinates[frame_id]
-                    result[frame_id] = (coord_info.x, coord_info.y, coord_info.z)
+                    result[frame_id] = self._normalize_coordinate(
+                        coord_info.x, coord_info.y, coord_info.z
+                    )
 
         return result
 
@@ -286,13 +343,18 @@ class CoordinateCache:
             logger.warning("No coordinates available for dimension calculation")
             return (1, 1, 1)
 
-        # Calculate dimensions from all coordinates
-        x_coords = [coord.x for coord in self._coordinates.values()]
-        y_coords = [coord.y for coord in self._coordinates.values()]
-        z_coords = [coord.z for coord in self._coordinates.values()]
+        # Calculate dimensions from normalized coordinates
+        normalized_coords = [
+            self._normalize_coordinate(coord.x, coord.y, coord.z)
+            for coord in self._coordinates.values()
+        ]
 
-        if not x_coords:
+        if not normalized_coords:
             return (1, 1, 1)
+
+        x_coords = [coord[0] for coord in normalized_coords]
+        y_coords = [coord[1] for coord in normalized_coords]
+        z_coords = [coord[2] for coord in normalized_coords]
 
         x_size = max(x_coords) + 1  # Convert from max index to size
         y_size = max(y_coords) + 1

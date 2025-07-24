@@ -5,10 +5,22 @@ This package provides tools for converting MSI data from various formats (ImzML,
 into the modern SpatialData/Zarr format with automatic pixel size detection.
 """
 
+# Suppress known warnings from dependencies
+import warnings
+
+warnings.filterwarnings("ignore", category=FutureWarning, module="dask")
+warnings.filterwarnings("ignore", category=FutureWarning, module="spatialdata")
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="numba")
+warnings.filterwarnings("ignore", category=UserWarning, module="xarray_schema")
+warnings.filterwarnings(
+    "ignore", message="pkg_resources is deprecated", category=UserWarning
+)
+
 __version__ = "1.8.3"
 
-# Import readers to trigger format detector registration
-from . import readers  # This triggers the format detector registrations
+# Import readers and converters to trigger registration
+from . import converters  # This triggers converter registrations
+from . import readers  # This triggers reader registrations
 from .convert import convert_msi
 
 # Import key components - avoid wildcard imports

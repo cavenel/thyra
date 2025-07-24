@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from anndata import AnnData  # type: ignore
 from numpy.typing import NDArray
 from scipy import sparse
 
@@ -18,6 +17,7 @@ SPATIALDATA_AVAILABLE = False
 _import_error_msg = None
 try:
     import geopandas as gpd
+    from anndata import AnnData  # type: ignore
     from shapely.geometry import box
     from spatialdata import SpatialData
     from spatialdata.models import Image2DModel, ShapesModel, TableModel
@@ -28,7 +28,11 @@ except (ImportError, NotImplementedError) as e:
     _import_error_msg = str(e)
     logging.warning(f"SpatialData dependencies not available: {e}")
     SPATIALDATA_AVAILABLE = False
+
     # Create dummy classes for registration
+    class AnnData:
+        pass
+
     SpatialData = None
     TableModel = None
     ShapesModel = None
@@ -38,7 +42,6 @@ except (ImportError, NotImplementedError) as e:
     gpd = None
 
 
-@register_converter("spatialdata")
 class SpatialDataConverter(BaseMSIConverter):
     """Converter for MSI data to SpatialData format."""
 
@@ -731,3 +734,13 @@ class SpatialDataConverter(BaseMSIConverter):
             logging.info(
                 f"Comprehensive metadata persisted to SpatialData with {len(metadata_dict)} top-level sections"
             )
+
+
+# Only register the converter if SpatialData dependencies are available
+if SPATIALDATA_AVAILABLE:
+    register_converter("spatialdata")(SpatialDataConverter)
+    logging.debug("SpatialDataConverter registered successfully")
+else:
+    logging.warning(
+        f"SpatialDataConverter not registered due to dependency issues: {_import_error_msg}"
+    )

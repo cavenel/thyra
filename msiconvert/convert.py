@@ -120,8 +120,23 @@ def convert_msi(
             }
 
         # Create converter
-        converter_class = get_converter_class(format_type.lower())
-        logging.info(f"Using converter: {converter_class.__name__}")
+        try:
+            converter_class = get_converter_class(format_type.lower())
+            logging.info(f"Using converter: {converter_class.__name__}")
+        except ValueError as e:
+            if "spatialdata" in format_type.lower():
+                logging.error(
+                    "SpatialData converter is not available due to dependency issues."
+                )
+                logging.error(
+                    "This is commonly caused by zarr version incompatibility."
+                )
+                logging.error("Try upgrading your dependencies:")
+                logging.error("  pip install --upgrade anndata spatialdata zarr")
+                logging.error("Or create a fresh environment with compatible versions.")
+                return False
+            else:
+                raise e
         converter = converter_class(
             reader,
             output_path,

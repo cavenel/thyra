@@ -1,22 +1,18 @@
 """
-Tests for the format registry system.
+Tests for the simplified format registry system.
 """
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
 from msiconvert.core.base_converter import BaseMSIConverter
 from msiconvert.core.base_reader import BaseMSIReader
 from msiconvert.core.registry import (
-    converter_registry,
+    _registry,
     detect_format,
-    format_detectors,
     get_converter_class,
     get_reader_class,
-    reader_registry,
     register_converter,
-    register_format_detector,
     register_reader,
 )
 
@@ -27,25 +23,22 @@ class TestRegistry:
     def setup_method(self):
         """Set up each test by clearing the registries."""
         # Store original registry values to restore later
-        self.original_reader_registry = reader_registry.copy()
-        self.original_converter_registry = converter_registry.copy()
-        self.original_format_detectors = format_detectors.copy()
+        with _registry._lock:
+            self.original_readers = _registry._readers.copy()
+            self.original_converters = _registry._converters.copy()
 
-        # Clear registries for testing
-        reader_registry.clear()
-        converter_registry.clear()
-        format_detectors.clear()
+            # Clear registries for testing
+            _registry._readers.clear()
+            _registry._converters.clear()
 
     def teardown_method(self):
         """Restore original registry values after each test."""
-        reader_registry.clear()
-        reader_registry.update(self.original_reader_registry)
+        with _registry._lock:
+            _registry._readers.clear()
+            _registry._readers.update(self.original_readers)
 
-        converter_registry.clear()
-        converter_registry.update(self.original_converter_registry)
-
-        format_detectors.clear()
-        format_detectors.update(self.original_format_detectors)
+            _registry._converters.clear()
+            _registry._converters.update(self.original_converters)
 
     def test_register_reader(self):
         """Test registering a reader class."""
@@ -71,8 +64,9 @@ class TestRegistry:
         register_reader("test_format")(TestReader)
 
         # Check if it was properly registered
-        assert "test_format" in reader_registry
-        assert reader_registry["test_format"] == TestReader
+        with _registry._lock:
+            assert "test_format" in _registry._readers
+            assert _registry._readers["test_format"] == TestReader
 
         # Test getting the reader class
         retrieved_class = get_reader_class("test_format")
@@ -93,60 +87,87 @@ class TestRegistry:
         register_converter("test_format")(TestConverter)
 
         # Check if it was properly registered
-        assert "test_format" in converter_registry
-        assert converter_registry["test_format"] == TestConverter
+        with _registry._lock:
+            assert "test_format" in _registry._converters
+            assert _registry._converters["test_format"] == TestConverter
 
         # Test getting the converter class
         retrieved_class = get_converter_class("test_format")
         assert retrieved_class == TestConverter
 
-    def test_register_format_detector(self):
-        """Test registering a format detector function."""
+    def test_detect_format_imzml(self, tmp_path):
+        """Test ImzML format detection via extension."""
+        # Create test files
+        imzml_file = tmp_path / "test.imzml"
+        ibd_file = tmp_path / "test.ibd"
+        imzml_file.touch()
+        ibd_file.touch()
 
-        # Create a test detector function
-        def test_detector(path):
-            return path.name == "test.file"
+        assert detect_format(imzml_file) == "imzml"
 
-        # Register it
-        register_format_detector("test_format")(test_detector)
+    def test_detect_format_bruker(self, tmp_path):
+        """Test Bruker format detection via extension."""
+        # Create test directory
+        bruker_dir = tmp_path / "test.d"
+        bruker_dir.mkdir()
+        (bruker_dir / "analysis.tsf").touch()
 
-        # Check if it was properly registered
-        assert "test_format" in format_detectors
-        assert format_detectors["test_format"] == test_detector
+        assert detect_format(bruker_dir) == "bruker"
 
-    def test_detect_format(self):
-        """Test format detection."""
+    def test_detect_format_bruker_tdf(self, tmp_path):
+        """Test Bruker format detection with .tdf file."""
+        # Create test directory
+        bruker_dir = tmp_path / "test.d"
+        bruker_dir.mkdir()
+        (bruker_dir / "analysis.tdf").touch()
 
-        # Register some test detectors
-        @register_format_detector("format_a")
-        def detect_a(path):
-            return path.name == "test_a.file"
+        assert detect_format(bruker_dir) == "bruker"
 
-        @register_format_detector("format_b")
-        def detect_b(path):
-            return path.name == "test_b.file"
+    def test_unsupported_extension(self, tmp_path):
+        """Test error for unsupported extension."""
+        unknown_file = tmp_path / "test.xyz"
+        unknown_file.touch()
 
-        # Test detection with patching
-        with patch("pathlib.Path.exists", return_value=True), patch(
-            "pathlib.Path.is_file", return_value=True
-        ):
-            path_a = Path("test_a.file")
-            path_b = Path("test_b.file")
-            path_c = Path("test_c.file")
+        with pytest.raises(ValueError, match="Unsupported file extension"):
+            detect_format(unknown_file)
 
-            assert detect_format(path_a) == "format_a"
-            assert detect_format(path_b) == "format_b"
+    def test_missing_ibd_file(self, tmp_path):
+        """Test error for ImzML without .ibd file."""
+        imzml_file = tmp_path / "test.imzml"
+        imzml_file.touch()
 
-            # Test with unknown format
-            with pytest.raises(ValueError):
-                detect_format(path_c)
+        with pytest.raises(ValueError, match="requires corresponding .ibd file"):
+            detect_format(imzml_file)
+
+    def test_bruker_missing_analysis_files(self, tmp_path):
+        """Test error for Bruker .d directory without analysis files."""
+        bruker_dir = tmp_path / "test.d"
+        bruker_dir.mkdir()
+
+        with pytest.raises(ValueError, match="missing analysis files"):
+            detect_format(bruker_dir)
+
+    def test_bruker_not_directory(self, tmp_path):
+        """Test error for .d file instead of directory."""
+        fake_bruker = tmp_path / "test.d"
+        fake_bruker.touch()  # Create as file, not directory
+
+        with pytest.raises(ValueError, match="requires .d directory"):
+            detect_format(fake_bruker)
+
+    def test_nonexistent_path(self, tmp_path):
+        """Test error for non-existent path."""
+        nonexistent = tmp_path / "nonexistent.imzml"
+
+        with pytest.raises(ValueError, match="Input path does not exist"):
+            detect_format(nonexistent)
 
     def test_get_nonexistent_reader(self):
         """Test getting a non-existent reader class."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="No reader for format"):
             get_reader_class("nonexistent_format")
 
     def test_get_nonexistent_converter(self):
         """Test getting a non-existent converter class."""
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="No converter for format"):
             get_converter_class("nonexistent_format")
