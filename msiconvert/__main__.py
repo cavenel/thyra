@@ -30,7 +30,7 @@ def main():
         "--pixel-size",
         type=float,
         default=None,
-        help="Size of each pixel in micrometers (if not specified, automatic detection will be attempted)",
+        help="Pixel size in micrometers. If not specified, automatic detection from metadata will be attempted. Required if detection fails.",
     )
     parser.add_argument(
         "--handle-3d",
