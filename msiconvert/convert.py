@@ -4,6 +4,7 @@ import traceback
 import warnings
 from pathlib import Path
 
+from .core.base_reader import BaseMSIReader
 from .core.registry import detect_format, get_converter_class, get_reader_class
 from .metadata.types import EssentialMetadata
 
@@ -27,8 +28,6 @@ def convert_msi(
     dataset_id: str = "msi_dataset",
     pixel_size_um: float = None,
     handle_3d: bool = False,
-    pixel_size_detection_info_override: dict = None,
-    essential_metadata: EssentialMetadata = None,
     **kwargs,
 ) -> bool:
     """Convert MSI data to the specified format with enhanced error handling and automatic pixel size detection."""
@@ -73,62 +72,51 @@ def convert_msi(
         return False
 
     try:
+        # Create reader
         input_format = detect_format(input_path)
         logging.info(f"Detected format: {input_format}")
-
         reader_class = get_reader_class(input_format)
         logging.info(f"Using reader: {reader_class.__name__}")
         reader = reader_class(input_path)
+        should_close_reader = True
 
         # Handle automatic pixel size detection if not provided
         final_pixel_size = pixel_size_um
-        pixel_size_detection_info = pixel_size_detection_info_override
+        pixel_size_detection_info = None
 
         if pixel_size_um is None:
             logging.info("Attempting automatic pixel size detection...")
             try:
-                # Use provided metadata if available, otherwise extract it
-                if essential_metadata is None:
-                    essential_metadata = reader.get_essential_metadata()
-                detected_pixel_size = essential_metadata.pixel_size
-                if detected_pixel_size is not None:
-                    final_pixel_size = detected_pixel_size[
-                        0
-                    ]  # Use X size (assuming square pixels)
-                    logging.info(
-                        f"OK Automatically detected pixel size: {detected_pixel_size[0]:.1f} x {detected_pixel_size[1]:.1f} um"
-                    )
+                essential_metadata = reader.get_essential_metadata()
 
-                    # Create pixel size detection provenance metadata
+                if essential_metadata.pixel_size is not None:
+                    final_pixel_size = essential_metadata.pixel_size[0]  # Use X size
+                    logging.info(f"✓ Detected pixel size: {final_pixel_size:.1f} µm")
+
                     pixel_size_detection_info = {
                         "method": "automatic",
-                        "detected_x_um": float(detected_pixel_size[0]),
-                        "detected_y_um": float(detected_pixel_size[1]),
+                        "detected_x_um": float(essential_metadata.pixel_size[0]),
+                        "detected_y_um": float(essential_metadata.pixel_size[1]),
                         "source_format": input_format,
                         "detection_successful": True,
-                        "note": "Pixel size automatically detected from source metadata and applied to coordinate systems",
+                        "note": "Pixel size automatically detected from source metadata",
                     }
                 else:
-                    logging.error(
-                        "ERROR Could not automatically detect pixel size from metadata"
-                    )
-                    logging.error(
-                        "Please specify --pixel-size manually or ensure the input file contains pixel size metadata"
-                    )
+                    logging.error("✗ Pixel size not found in metadata")
+                    logging.error("Use --pixel-size parameter (e.g., --pixel-size 25)")
                     return False
+
             except Exception as e:
-                logging.error(f"ERROR Failed to extract essential metadata: {e}")
-                logging.error(
-                    "Please specify --pixel-size manually or ensure the input file contains valid metadata"
-                )
+                logging.error(f"✗ Failed to extract metadata: {e}")
+                logging.error("Use --pixel-size parameter (e.g., --pixel-size 25)")
                 return False
-        elif pixel_size_detection_info_override is None:
-            # Manual pixel size was provided and no override info provided
+        else:
+            # Manual pixel size was provided
             pixel_size_detection_info = {
                 "method": "manual",
                 "source_format": input_format,
                 "detection_successful": False,
-                "note": "Pixel size manually specified via --pixel-size parameter and applied to coordinate systems",
+                "note": "Pixel size manually specified via --pixel-size parameter",
             }
 
         # Create converter
@@ -148,9 +136,24 @@ def convert_msi(
         logging.info("Starting conversion...")
         result = converter.convert()
         logging.info(f"Conversion {'completed successfully' if result else 'failed'}")
+
+        # Only close reader if we created it
+        if should_close_reader and hasattr(reader, "close"):
+            reader.close()
+
         return result
     except Exception as e:
         logging.error(f"Error during conversion: {e}")
         # Log detailed traceback for debugging
         logging.error(f"Detailed traceback:\n{traceback.format_exc()}")
+
+        # Ensure cleanup on exception if we created the reader
+        if (
+            "should_close_reader" in locals()
+            and should_close_reader
+            and "reader" in locals()
+            and hasattr(reader, "close")
+        ):
+            reader.close()
+
         return False

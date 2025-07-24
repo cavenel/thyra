@@ -10,109 +10,6 @@ from msiconvert.utils.data_processors import optimize_zarr_chunks
 from msiconvert.utils.logging_config import setup_logging
 
 
-def prompt_for_pixel_size(detected_size=None):
-    """
-    Interactively prompt user for pixel size.
-
-    Args:
-        detected_size: Optional tuple of (x_size, y_size) if detection succeeded
-
-    Returns:
-        float: Pixel size in micrometers
-    """
-    if detected_size is not None:
-        print(
-            f"\nOK Automatically detected pixel size: {detected_size[0]:.1f} x {detected_size[1]:.1f} um"
-        )
-        while True:
-            response = input("Use detected pixel size? [Y/n]: ").strip().lower()
-            if response in ["", "y", "yes"]:
-                return detected_size[0]  # Use X size (assuming square pixels)
-            elif response in ["n", "no"]:
-                break
-            else:
-                print("Please enter 'y' for yes or 'n' for no.")
-
-    # Manual input
-    while True:
-        try:
-            print("\nPixel size could not be automatically detected.")
-            pixel_size_input = input(
-                "Please enter pixel size in micrometers (um): "
-            ).strip()
-            pixel_size = float(pixel_size_input)
-            if pixel_size <= 0:
-                print("Error: Pixel size must be positive. Please try again.")
-                continue
-            return pixel_size
-        except ValueError:
-            print("Error: Please enter a valid number. Please try again.")
-        except KeyboardInterrupt:
-            print("\nConversion cancelled by user.")
-            sys.exit(1)
-
-
-def detect_pixel_size_interactive(reader, input_format):
-    """
-    Try automatic detection and fall back to interactive prompt if needed.
-
-    Args:
-        reader: MSI reader instance
-        input_format: Format of the input file
-
-    Returns:
-        tuple: (pixel_size, detection_info_dict, essential_metadata)
-    """
-    logging.info("Attempting automatic pixel size detection...")
-    essential_metadata = reader.get_essential_metadata()
-    detected_pixel_size = essential_metadata.pixel_size
-
-    if detected_pixel_size is not None:
-        logging.info(
-            f"OK Automatically detected pixel size: {detected_pixel_size[0]:.1f} x {detected_pixel_size[1]:.1f} um"
-        )
-        selected_pixel_size = prompt_for_pixel_size(detected_pixel_size)
-
-        # If user selected the detected size, create automatic detection info
-        from msiconvert.config import PIXEL_SIZE_TOLERANCE
-
-        if (
-            abs(selected_pixel_size - detected_pixel_size[0]) < PIXEL_SIZE_TOLERANCE
-        ):  # Used detected size
-            detection_info = {
-                "method": "automatic_interactive",
-                "detected_x_um": float(detected_pixel_size[0]),
-                "detected_y_um": float(detected_pixel_size[1]),
-                "source_format": input_format,
-                "detection_successful": True,
-                "note": "Pixel size automatically detected from source metadata and confirmed by user",
-            }
-        else:  # User entered different value
-            detection_info = {
-                "method": "manual_override",
-                "detected_x_um": float(detected_pixel_size[0]),
-                "detected_y_um": float(detected_pixel_size[1]),
-                "user_specified_um": float(selected_pixel_size),
-                "source_format": input_format,
-                "detection_successful": True,
-                "note": "Pixel size was auto-detected but user specified a different value",
-            }
-
-        return selected_pixel_size, detection_info, essential_metadata
-    else:
-        logging.warning("Could not automatically detect pixel size from metadata")
-        selected_pixel_size = prompt_for_pixel_size(None)
-
-        detection_info = {
-            "method": "manual",
-            "source_format": input_format,
-            "detection_successful": False,
-            "note": "Pixel size could not be auto-detected, manually specified by user",
-        }
-
-        return selected_pixel_size, detection_info, essential_metadata
-
-
 def main():
     parser = argparse.ArgumentParser(
         description="Convert MSI data to SpatialData format"
@@ -191,36 +88,10 @@ def main():
     # Configure logging
     setup_logging(log_level=getattr(logging, args.log_level), log_file=args.log_file)
 
-    # Determine pixel size (auto-detect or use provided value)
-    final_pixel_size = args.pixel_size
-    if args.pixel_size is None:
-        # For actual conversion, use interactive detection
-        try:
-            # Detect format and create reader for pixel size detection
-            input_path = Path(args.input).resolve()
-            input_format = detect_format(input_path)
-            reader_class = get_reader_class(input_format)
-            reader = reader_class(input_path)
+    # Pixel size handling moved entirely to convert.py
+    final_pixel_size = args.pixel_size  # Can be None
 
-            # Get pixel size interactively
-            (
-                final_pixel_size,
-                detection_info,
-                essential_metadata,
-            ) = detect_pixel_size_interactive(reader, input_format)
-            reader.close()
-
-            logging.info(f"Using pixel size: {final_pixel_size} um")
-        except Exception as e:
-            logging.error(f"Error during pixel size detection: {e}")
-            logging.error("Conversion aborted.")
-            return
-
-    # Convert MSI data - pass detection_info and essential_metadata if available
-    detection_info_override = detection_info if "detection_info" in locals() else None
-    essential_metadata_override = (
-        essential_metadata if "essential_metadata" in locals() else None
-    )
+    # Convert MSI data
     success = convert_msi(
         args.input,
         args.output,
@@ -228,8 +99,6 @@ def main():
         dataset_id=args.dataset_id,
         pixel_size_um=final_pixel_size,
         handle_3d=args.handle_3d,
-        pixel_size_detection_info_override=detection_info_override,
-        essential_metadata=essential_metadata_override,
     )
 
     if success and args.optimize_chunks:
