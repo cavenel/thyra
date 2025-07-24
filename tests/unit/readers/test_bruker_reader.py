@@ -30,10 +30,11 @@ class TestBrukerReaderStructure:
 
     def test_class_registration(self):
         """Test that the BrukerReader class is properly registered."""
-        from msiconvert.core.registry import reader_registry
+        from msiconvert.core.registry import get_reader_class
 
-        assert "bruker" in reader_registry
-        assert reader_registry["bruker"] == BrukerReader
+        # Test that we can get the bruker reader class
+        reader_class = get_reader_class("bruker")
+        assert reader_class == BrukerReader
 
     def test_interface_implementation(self):
         """Test that the BrukerReader implements the BaseMSIReader interface."""
