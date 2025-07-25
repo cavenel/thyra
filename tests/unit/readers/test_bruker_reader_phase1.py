@@ -159,8 +159,8 @@ class TestRawMassAxisBuilder:
 class TestDirectCoordinateExtraction:
     """Test direct coordinate extraction without CoordinateCache."""
     
-    def test_get_frame_coordinates_maldi(self):
-        """Test direct coordinate extraction for MALDI data."""
+    def test_get_frame_coordinates_maldi_with_offsets(self):
+        """Test direct coordinate extraction for MALDI data with normalization."""
         from msiconvert.readers.bruker.bruker_reader import _get_frame_coordinates
         
         # Mock database with MALDI data
@@ -170,25 +170,35 @@ class TestDirectCoordinateExtraction:
             mock_connect.return_value.__enter__.return_value = mock_conn
             mock_conn.cursor.return_value = mock_cursor
             
-            # Mock database queries - we need multiple calls now
-            def mock_execute_side_effect(query, params=None):
-                if "MaldiFrameInfo" in query and "XIndexPos" in query:
-                    # Mock MALDI coordinate query
-                    mock_cursor.fetchone.return_value = (15, 25)  # X=15, Y=25 for frame
-                elif "sqlite_master" in query:
-                    # Mock table existence check
-                    mock_cursor.fetchone.return_value = ("MaldiFrameInfo",)  # Table exists
-                elif "GlobalMetadata" in query:
-                    # Mock offset query - return min coordinates
-                    mock_cursor.fetchall.return_value = [("ImagingAreaMinXIndexPos", "5"), ("ImagingAreaMinYIndexPos", "15")]
-            
-            mock_cursor.execute.side_effect = mock_execute_side_effect
+            # Mock MALDI coordinate query
+            mock_cursor.fetchone.return_value = (15, 25)  # X=15, Y=25 for frame
             
             db_path = Path("/fake/analysis.tsf")
-            coords = _get_frame_coordinates(db_path, 1)
+            coordinate_offsets = (5, 15, 0)  # Offsets from metadata
+            coords = _get_frame_coordinates(db_path, 1, coordinate_offsets)
             
             # Should return normalized coordinates: (15-5, 25-15, 0) = (10, 10, 0)
             assert coords == (10, 10, 0)
+
+    def test_get_frame_coordinates_maldi_without_offsets(self):
+        """Test direct coordinate extraction for MALDI data without normalization."""
+        from msiconvert.readers.bruker.bruker_reader import _get_frame_coordinates
+        
+        # Mock database with MALDI data
+        with patch('sqlite3.connect') as mock_connect:
+            mock_conn = MagicMock()
+            mock_cursor = MagicMock()
+            mock_connect.return_value.__enter__.return_value = mock_conn
+            mock_conn.cursor.return_value = mock_cursor
+            
+            # Mock MALDI coordinate query
+            mock_cursor.fetchone.return_value = (15, 25)  # X=15, Y=25 for frame
+            
+            db_path = Path("/fake/analysis.tsf")
+            coords = _get_frame_coordinates(db_path, 1)  # No offsets provided
+            
+            # Should return raw coordinates: (15, 25, 0)
+            assert coords == (15, 25, 0)
     
     def test_get_frame_coordinates_non_maldi(self):
         """Test direct coordinate extraction for non-MALDI data."""
@@ -228,50 +238,6 @@ class TestDirectCoordinateExtraction:
             
             assert count == 100
             mock_cursor.execute.assert_called_with("SELECT COUNT(*) FROM Frames")
-    
-    def test_get_coordinate_offsets_maldi(self):
-        """Test coordinate offset extraction for MALDI data."""
-        from msiconvert.readers.bruker.bruker_reader import _get_coordinate_offsets
-        
-        with patch('sqlite3.connect') as mock_connect:
-            mock_conn = MagicMock()
-            mock_cursor = MagicMock()
-            mock_connect.return_value.__enter__.return_value = mock_conn
-            mock_conn.cursor.return_value = mock_cursor
-            
-            # Mock database queries
-            def mock_execute_side_effect(query, params=None):
-                if "sqlite_master" in query:
-                    # Mock table existence check
-                    mock_cursor.fetchone.return_value = ("MaldiFrameInfo",)  # Table exists
-                elif "GlobalMetadata" in query:
-                    # Mock offset query
-                    mock_cursor.fetchall.return_value = [("ImagingAreaMinXIndexPos", "5"), ("ImagingAreaMinYIndexPos", "15")]
-            
-            mock_cursor.execute.side_effect = mock_execute_side_effect
-            
-            db_path = Path("/fake/analysis.tsf")
-            offsets = _get_coordinate_offsets(db_path)
-            
-            assert offsets == (5, 15, 0)
-    
-    def test_get_coordinate_offsets_non_maldi(self):
-        """Test coordinate offset extraction for non-MALDI data."""
-        from msiconvert.readers.bruker.bruker_reader import _get_coordinate_offsets
-        
-        with patch('sqlite3.connect') as mock_connect:
-            mock_conn = MagicMock()
-            mock_cursor = MagicMock()
-            mock_connect.return_value.__enter__.return_value = mock_conn
-            mock_conn.cursor.return_value = mock_cursor
-            
-            # Mock no MALDI table
-            mock_cursor.fetchone.return_value = None  # No table found
-            
-            db_path = Path("/fake/analysis.tsf")
-            offsets = _get_coordinate_offsets(db_path)
-            
-            assert offsets == (0, 0, 0)
 
 
 class TestReaderInterface:
