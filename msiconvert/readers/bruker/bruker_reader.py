@@ -327,8 +327,15 @@ class BrukerReader(BaseMSIReader):
                         pbar.update(1)
                         continue
 
-                    # Read spectrum
-                    mzs, intensities = self.sdk.read_spectrum(self.handle, frame_id)
+                    # OPTIMIZATION: Get buffer size hint from NumPeaks cache
+                    buffer_size_hint = self._num_peaks_cache.get(frame_id)
+                    
+                    # Read spectrum with optimization (or fallback if no hint)
+                    mzs, intensities = self.sdk.read_spectrum(
+                        self.handle, 
+                        frame_id, 
+                        buffer_size_hint=buffer_size_hint
+                    )
 
                     if mzs.size > 0 and intensities.size > 0:
                         yield coords, mzs, intensities
