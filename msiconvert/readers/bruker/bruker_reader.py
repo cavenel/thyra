@@ -320,8 +320,8 @@ class BrukerReader(BaseMSIReader):
         ) as pbar:
             for frame_id in range(1, frame_count + 1):
                 try:
-                    # Get normalized coordinates using metadata offsets
-                    coords = _get_frame_coordinates(self.db_path, frame_id, coordinate_offsets)
+                    # Get normalized coordinates using persistent connection
+                    coords = self._get_frame_coordinates_cached(frame_id, coordinate_offsets)
                     if coords is None:
                         logger.warning(f"No coordinates found for frame {frame_id}")
                         pbar.update(1)
@@ -367,6 +367,45 @@ class BrukerReader(BaseMSIReader):
             self._coordinate_offsets = essential_metadata.coordinate_offsets
         
         return self._coordinate_offsets
+
+    def _get_frame_coordinates_cached(self, frame_id: int, coordinate_offsets: Optional[Tuple[int, int, int]] = None) -> Optional[Tuple[int, int, int]]:
+        """
+        Get normalized coordinates for a specific frame using persistent connection.
+        
+        This avoids opening new SQLite connections for every frame.
+        
+        Args:
+            frame_id: Frame ID to look up
+            coordinate_offsets: Optional coordinate offsets for normalization
+            
+        Returns:
+            Tuple of normalized (x, y, z) coordinates (0-based), or None if not found
+        """
+        try:
+            cursor = self.conn.cursor()
+            
+            # Check if this is MALDI data
+            try:
+                cursor.execute("SELECT XIndexPos, YIndexPos FROM MaldiFrameInfo WHERE Frame = ?", (frame_id,))
+                result = cursor.fetchone() 
+                if result:
+                    x, y = result
+                    # Apply coordinate offsets if provided (Bruker-specific normalization)
+                    if coordinate_offsets:
+                        offset_x, offset_y, offset_z = coordinate_offsets
+                        return (int(x) - offset_x, int(y) - offset_y, 0)
+                    else:
+                        return (int(x), int(y), 0)
+            except sqlite3.OperationalError:
+                # No MALDI table, use generated coordinates
+                pass
+            
+            # For non-MALDI data, generate coordinates (simple sequential mapping)
+            return (frame_id - 1, 0, 0)
+            
+        except Exception as e:
+            logger.warning(f"Error getting coordinates for frame {frame_id}: {e}")
+            return None
 
     def _preload_frame_num_peaks(self) -> Dict[int, int]:
         """
