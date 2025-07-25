@@ -1,11 +1,11 @@
 """
-Test suite for Bruker reader (Phase 1: Remove BatchProcessor & MemoryManager).
+Test suite for Bruker reader after simplification.
 
 This test suite validates:
 - Raw mass axis building
-- Direct spectrum iteration without batching
-- Removal of complex memory management
-- Maintained functionality with cleaner interface
+- Direct spectrum iteration
+- Direct coordinate extraction
+- Core functionality after removing complex utilities
 """
 
 import numpy as np
@@ -18,7 +18,7 @@ from msiconvert.readers.bruker.bruker_reader import BrukerReader
 
 
 class TestBrukerReader:
-    """Test the Bruker reader without BatchProcessor and MemoryManager."""
+    """Test the Bruker reader core functionality."""
 
     def test_no_batch_processor_dependency(self):
         """Test that BatchProcessor is no longer imported or used."""
@@ -256,13 +256,20 @@ class TestDirectCoordinateExtraction:
             mock_cursor.execute.assert_called_with("SELECT COUNT(*) FROM Frames")
 
 
-class TestLegacyCompatibility:
-    """Test that the reader maintains compatibility with existing interfaces."""
-    
+class TestReaderInterface:
+    """Test that the reader maintains required interfaces."""
+
+    def test_registration_works(self):
+        """Test that the reader is properly registered."""
+        from msiconvert.core.registry import get_reader_class
+        
+        reader_class = get_reader_class("bruker")
+        assert reader_class == BrukerReader
+
     @patch('msiconvert.readers.bruker.bruker_reader.DLLManager')
     @patch('msiconvert.readers.bruker.bruker_reader.SDKFunctions')
-    def test_reader_interface_compatibility(self, mock_sdk_functions, mock_dll_manager):
-        """Test that all required methods are still available."""
+    def test_required_methods_exist(self, mock_sdk_functions, mock_dll_manager):
+        """Test that all required interface methods exist."""
         mock_data_path = Path("/fake/bruker.d")
         
         # Mock the required components
@@ -292,10 +299,3 @@ class TestLegacyCompatibility:
             for method_name in required_methods:
                 assert hasattr(reader, method_name)
                 assert callable(getattr(reader, method_name))
-
-    def test_registration_still_works(self):
-        """Test that the simplified reader is still properly registered."""
-        from msiconvert.core.registry import get_reader_class
-        
-        reader_class = get_reader_class("bruker")
-        assert reader_class == BrukerReader
