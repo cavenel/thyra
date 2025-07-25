@@ -20,7 +20,6 @@ from ...metadata.extractors.bruker_extractor import BrukerMetadataExtractor
 from ...utils.bruker_exceptions import DataError, FileFormatError, SDKError
 from .sdk.dll_manager import DLLManager
 from .sdk.sdk_functions import SDKFunctions
-from .utils.coordinate_cache import CoordinateCache
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +51,60 @@ def build_raw_mass_axis(spectra_iterator, progress_callback=None):
     return np.array(sorted(unique_mzs))
 
 
+def _get_frame_coordinates(db_path: Path, frame_id: int) -> Optional[Tuple[int, int, int]]:
+    """
+    Get coordinates for a specific frame directly from database.
+    
+    Args:
+        db_path: Path to the SQLite database file
+        frame_id: Frame ID to look up
+        
+    Returns:
+        Tuple of (x, y, z) coordinates, or None if not found
+    """
+    try:
+        with sqlite3.connect(str(db_path)) as conn:
+            cursor = conn.cursor()
+            
+            # Check if this is MALDI data
+            try:
+                cursor.execute("SELECT XIndexPos, YIndexPos FROM MaldiFrameInfo WHERE Frame = ?", (frame_id,))
+                result = cursor.fetchone() 
+                if result:
+                    x, y = result
+                    return (int(x), int(y), 0)
+            except sqlite3.OperationalError:
+                # No MALDI table, use generated coordinates
+                pass
+            
+            # For non-MALDI data, generate coordinates (simple sequential mapping)
+            return (frame_id - 1, 0, 0)
+            
+    except Exception as e:
+        logger.warning(f"Error getting coordinates for frame {frame_id}: {e}")
+        return None
+
+
+def _get_frame_count(db_path: Path) -> int:
+    """
+    Get total frame count directly from database.
+    
+    Args:
+        db_path: Path to the SQLite database file
+        
+    Returns:
+        Total number of frames
+    """
+    try:
+        with sqlite3.connect(str(db_path)) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM Frames")
+            return cursor.fetchone()[0]
+    except Exception as e:
+        logger.error(f"Error getting frame count: {e}")
+        return 0
+
+
 @register_reader("bruker")
 class BrukerReader(BaseMSIReader):
     """
@@ -59,7 +112,7 @@ class BrukerReader(BaseMSIReader):
 
     Features:
     - Sequential spectrum iteration
-    - Coordinate caching for performance
+    - Direct database coordinate access
     - Robust SDK integration with fallback mechanisms
     - Comprehensive error handling and recovery
     - Compatible with spatialdata_converter.py interface
@@ -81,7 +134,7 @@ class BrukerReader(BaseMSIReader):
         Args:
             data_path: Path to Bruker .d directory
             use_recalibrated_state: Whether to use recalibrated data
-            cache_coordinates: Whether to cache coordinates for performance
+            cache_coordinates: Ignored, maintained for compatibility
             memory_limit_gb: Ignored, maintained for compatibility
             batch_size: Ignored, maintained for compatibility
             progress_callback: Optional callback for progress updates
@@ -145,11 +198,9 @@ class BrukerReader(BaseMSIReader):
         memory_limit_gb: Optional[float],
         batch_size: Optional[int],
     ) -> None:
-        """Setup simplified utility components."""
-        # Coordinate cache (only remaining component for now)
-        self.coordinate_cache = CoordinateCache(
-            db_path=self.db_path, preload_all=cache_coordinates
-        )
+        """Setup utility components (now minimal)."""
+        # No more coordinate cache - using direct database access
+        pass
 
     def _initialize_sdk(self) -> None:
         """Initialize the Bruker SDK with error handling."""
@@ -257,8 +308,8 @@ class BrukerReader(BaseMSIReader):
         ) as pbar:
             for frame_id in range(1, frame_count + 1):
                 try:
-                    # Get coordinates
-                    coords = self.coordinate_cache.get_coordinate(frame_id)
+                    # Get coordinates directly
+                    coords = _get_frame_coordinates(self.db_path, frame_id)
                     if coords is None:
                         logger.warning(f"No coordinates found for frame {frame_id}")
                         pbar.update(1)
@@ -286,7 +337,7 @@ class BrukerReader(BaseMSIReader):
     def _get_frame_count(self) -> int:
         """Get the total number of frames."""
         if self._frame_count is None:
-            self._frame_count = self.coordinate_cache.get_frame_count()
+            self._frame_count = _get_frame_count(self.db_path)
 
         return self._frame_count
 
@@ -305,12 +356,7 @@ class BrukerReader(BaseMSIReader):
                 self.conn.close()
                 self.conn = None
 
-            # Clear caches
-            if hasattr(self, "coordinate_cache"):
-                self.coordinate_cache.clear_cache()
-
-            if hasattr(self, "memory_manager"):
-                self.memory_manager.buffer_pool.clear()
+            # No caches to clear anymore
 
             logger.info("Successfully closed all resources")
 

@@ -10,6 +10,7 @@ This test suite validates:
 
 import numpy as np
 import pytest
+import sqlite3
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -44,6 +45,18 @@ class TestBrukerReader:
         source = inspect.getsource(reader_module)
         assert 'MemoryManager' not in source
 
+    def test_no_coordinate_cache_dependency(self):
+        """Test that CoordinateCache is no longer imported or used."""
+        import msiconvert.readers.bruker.bruker_reader as reader_module
+        
+        # This should not have CoordinateCache in the imports
+        assert not hasattr(reader_module, 'CoordinateCache')
+        
+        # The module should not import CoordinateCache
+        import inspect
+        source = inspect.getsource(reader_module)
+        assert 'CoordinateCache' not in source
+
     @patch('msiconvert.readers.bruker.bruker_reader.DLLManager')
     @patch('msiconvert.readers.bruker.bruker_reader.SDKFunctions')
     def test_initialization(self, mock_sdk_functions, mock_dll_manager):
@@ -69,9 +82,11 @@ class TestBrukerReader:
             # Verify that these attributes don't exist
             assert not hasattr(reader, 'batch_processor')
             assert not hasattr(reader, 'memory_manager')
+            assert not hasattr(reader, 'coordinate_cache')
             
-            # Should still have essential components
-            assert hasattr(reader, 'coordinate_cache')
+            # Should have essential components
+            assert hasattr(reader, 'sdk')
+            assert hasattr(reader, 'db_path')
 
     def test_build_raw_mass_axis_function_exists(self):
         """Test that build_raw_mass_axis function is available and works."""
@@ -178,8 +193,71 @@ class TestRawMassAxisBuilder:
         assert 200 in progress_calls
 
 
+class TestDirectCoordinateExtraction:
+    """Test direct coordinate extraction without CoordinateCache."""
+    
+    def test_get_frame_coordinates_maldi(self):
+        """Test direct coordinate extraction for MALDI data."""
+        from msiconvert.readers.bruker.bruker_reader import _get_frame_coordinates
+        
+        # Mock database with MALDI data
+        with patch('sqlite3.connect') as mock_connect:
+            mock_conn = MagicMock()
+            mock_cursor = MagicMock()
+            mock_connect.return_value.__enter__.return_value = mock_conn
+            mock_conn.cursor.return_value = mock_cursor
+            
+            # Mock MALDI query result
+            mock_cursor.fetchone.return_value = (10, 20)  # X=10, Y=20 for frame
+            
+            db_path = Path("/fake/analysis.tsf")
+            coords = _get_frame_coordinates(db_path, 1)
+            
+            # Should return (x, y, 0) for MALDI
+            assert coords == (10, 20, 0)
+    
+    def test_get_frame_coordinates_non_maldi(self):
+        """Test direct coordinate extraction for non-MALDI data."""
+        from msiconvert.readers.bruker.bruker_reader import _get_frame_coordinates
+        
+        # Mock database without MALDI data
+        with patch('sqlite3.connect') as mock_connect:
+            mock_conn = MagicMock()
+            mock_cursor = MagicMock()
+            mock_connect.return_value.__enter__.return_value = mock_conn
+            mock_conn.cursor.return_value = mock_cursor
+            
+            # Mock no MALDI table
+            mock_cursor.execute.side_effect = [sqlite3.OperationalError("no such table")]
+            
+            db_path = Path("/fake/analysis.tsf")
+            coords = _get_frame_coordinates(db_path, 5)
+            
+            # Should return generated coordinates for non-MALDI (frame_id-1, 0, 0)
+            assert coords == (4, 0, 0)
+    
+    def test_get_frame_count_direct(self):
+        """Test direct frame count extraction."""
+        from msiconvert.readers.bruker.bruker_reader import _get_frame_count
+        
+        with patch('sqlite3.connect') as mock_connect:
+            mock_conn = MagicMock()
+            mock_cursor = MagicMock()
+            mock_connect.return_value.__enter__.return_value = mock_conn
+            mock_conn.cursor.return_value = mock_cursor
+            
+            # Mock frame count query
+            mock_cursor.fetchone.return_value = [100]
+            
+            db_path = Path("/fake/analysis.tsf")
+            count = _get_frame_count(db_path)
+            
+            assert count == 100
+            mock_cursor.execute.assert_called_with("SELECT COUNT(*) FROM Frames")
+
+
 class TestLegacyCompatibility:
-    """Test that the simplified reader maintains compatibility with existing interfaces."""
+    """Test that the reader maintains compatibility with existing interfaces."""
     
     @patch('msiconvert.readers.bruker.bruker_reader.DLLManager')
     @patch('msiconvert.readers.bruker.bruker_reader.SDKFunctions')
