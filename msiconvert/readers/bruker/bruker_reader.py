@@ -51,55 +51,14 @@ def build_raw_mass_axis(spectra_iterator, progress_callback=None):
     return np.array(sorted(unique_mzs))
 
 
-def _get_coordinate_offsets(db_path: Path) -> Tuple[int, int, int]:
-    """
-    Get coordinate offsets for normalization to 0-based indexing.
-    
-    Args:
-        db_path: Path to the SQLite database file
-        
-    Returns:
-        Tuple of (min_x, min_y, min_z) offsets
-    """
-    try:
-        with sqlite3.connect(str(db_path)) as conn:
-            cursor = conn.cursor()
-            
-            # Check if this is MALDI data
-            try:
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='MaldiFrameInfo'")
-                is_maldi = cursor.fetchone() is not None
-                
-                if is_maldi:
-                    # Get imaging area bounds from GlobalMetadata
-                    cursor.execute("""
-                        SELECT Key, Value FROM GlobalMetadata
-                        WHERE Key IN ('ImagingAreaMinXIndexPos', 'ImagingAreaMinYIndexPos')
-                    """)
-                    
-                    bounds = dict(cursor.fetchall())
-                    min_x = int(bounds.get("ImagingAreaMinXIndexPos", 0))
-                    min_y = int(bounds.get("ImagingAreaMinYIndexPos", 0))
-                    return (min_x, min_y, 0)
-                
-            except sqlite3.OperationalError:
-                pass
-            
-            # For non-MALDI data, offsets are 0
-            return (0, 0, 0)
-            
-    except Exception as e:
-        logger.warning(f"Error getting coordinate offsets: {e}")
-        return (0, 0, 0)
-
-
-def _get_frame_coordinates(db_path: Path, frame_id: int) -> Optional[Tuple[int, int, int]]:
+def _get_frame_coordinates(db_path: Path, frame_id: int, coordinate_offsets: Optional[Tuple[int, int, int]] = None) -> Optional[Tuple[int, int, int]]:
     """
     Get normalized coordinates for a specific frame directly from database.
     
     Args:
         db_path: Path to the SQLite database file
         frame_id: Frame ID to look up
+        coordinate_offsets: Optional coordinate offsets for normalization (x_offset, y_offset, z_offset)
         
     Returns:
         Tuple of normalized (x, y, z) coordinates (0-based), or None if not found
@@ -114,9 +73,12 @@ def _get_frame_coordinates(db_path: Path, frame_id: int) -> Optional[Tuple[int, 
                 result = cursor.fetchone() 
                 if result:
                     x, y = result
-                    # Get offsets for normalization
-                    offset_x, offset_y, offset_z = _get_coordinate_offsets(db_path)
-                    return (int(x) - offset_x, int(y) - offset_y, 0)
+                    # Apply coordinate offsets if provided (Bruker-specific normalization)
+                    if coordinate_offsets:
+                        offset_x, offset_y, offset_z = coordinate_offsets
+                        return (int(x) - offset_x, int(y) - offset_y, 0)
+                    else:
+                        return (int(x), int(y), 0)
             except sqlite3.OperationalError:
                 # No MALDI table, use generated coordinates
                 pass
@@ -202,6 +164,7 @@ class BrukerReader(BaseMSIReader):
         # Cached properties (lazy loaded)
         self._common_mass_axis: Optional[np.ndarray] = None
         self._frame_count: Optional[int] = None
+        self._coordinate_offsets: Optional[Tuple[int, int, int]] = None
 
         logger.info(
             f"Initialized BrukerReader for {self.file_type.upper()} data at {data_path}"
@@ -342,6 +305,7 @@ class BrukerReader(BaseMSIReader):
     ) -> Generator[Tuple[Tuple[int, int, int], np.ndarray, np.ndarray], None, None]:
         """Raw spectrum iteration without batching."""
         frame_count = self._get_frame_count()
+        coordinate_offsets = self._get_coordinate_offsets()
 
         # Setup progress tracking
         with tqdm(
@@ -352,8 +316,8 @@ class BrukerReader(BaseMSIReader):
         ) as pbar:
             for frame_id in range(1, frame_count + 1):
                 try:
-                    # Get coordinates directly
-                    coords = _get_frame_coordinates(self.db_path, frame_id)
+                    # Get normalized coordinates using metadata offsets
+                    coords = _get_frame_coordinates(self.db_path, frame_id, coordinate_offsets)
                     if coords is None:
                         logger.warning(f"No coordinates found for frame {frame_id}")
                         pbar.update(1)
@@ -384,6 +348,14 @@ class BrukerReader(BaseMSIReader):
             self._frame_count = _get_frame_count(self.db_path)
 
         return self._frame_count
+
+    def _get_coordinate_offsets(self) -> Optional[Tuple[int, int, int]]:
+        """Get coordinate offsets from metadata for normalization."""
+        if self._coordinate_offsets is None:
+            essential_metadata = self.get_essential_metadata()
+            self._coordinate_offsets = essential_metadata.coordinate_offsets
+        
+        return self._coordinate_offsets
 
     def close(self) -> None:
         """Close all resources and connections."""
