@@ -51,16 +51,58 @@ def build_raw_mass_axis(spectra_iterator, progress_callback=None):
     return np.array(sorted(unique_mzs))
 
 
+def _get_coordinate_offsets(db_path: Path) -> Tuple[int, int, int]:
+    """
+    Get coordinate offsets for normalization to 0-based indexing.
+    
+    Args:
+        db_path: Path to the SQLite database file
+        
+    Returns:
+        Tuple of (min_x, min_y, min_z) offsets
+    """
+    try:
+        with sqlite3.connect(str(db_path)) as conn:
+            cursor = conn.cursor()
+            
+            # Check if this is MALDI data
+            try:
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='MaldiFrameInfo'")
+                is_maldi = cursor.fetchone() is not None
+                
+                if is_maldi:
+                    # Get imaging area bounds from GlobalMetadata
+                    cursor.execute("""
+                        SELECT Key, Value FROM GlobalMetadata
+                        WHERE Key IN ('ImagingAreaMinXIndexPos', 'ImagingAreaMinYIndexPos')
+                    """)
+                    
+                    bounds = dict(cursor.fetchall())
+                    min_x = int(bounds.get("ImagingAreaMinXIndexPos", 0))
+                    min_y = int(bounds.get("ImagingAreaMinYIndexPos", 0))
+                    return (min_x, min_y, 0)
+                
+            except sqlite3.OperationalError:
+                pass
+            
+            # For non-MALDI data, offsets are 0
+            return (0, 0, 0)
+            
+    except Exception as e:
+        logger.warning(f"Error getting coordinate offsets: {e}")
+        return (0, 0, 0)
+
+
 def _get_frame_coordinates(db_path: Path, frame_id: int) -> Optional[Tuple[int, int, int]]:
     """
-    Get coordinates for a specific frame directly from database.
+    Get normalized coordinates for a specific frame directly from database.
     
     Args:
         db_path: Path to the SQLite database file
         frame_id: Frame ID to look up
         
     Returns:
-        Tuple of (x, y, z) coordinates, or None if not found
+        Tuple of normalized (x, y, z) coordinates (0-based), or None if not found
     """
     try:
         with sqlite3.connect(str(db_path)) as conn:
@@ -72,7 +114,9 @@ def _get_frame_coordinates(db_path: Path, frame_id: int) -> Optional[Tuple[int, 
                 result = cursor.fetchone() 
                 if result:
                     x, y = result
-                    return (int(x), int(y), 0)
+                    # Get offsets for normalization
+                    offset_x, offset_y, offset_z = _get_coordinate_offsets(db_path)
+                    return (int(x) - offset_x, int(y) - offset_y, 0)
             except sqlite3.OperationalError:
                 # No MALDI table, use generated coordinates
                 pass
