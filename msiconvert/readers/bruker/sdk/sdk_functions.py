@@ -222,6 +222,9 @@ class SDKFunctions:
                 raise SDKError(f"Failed to read TSF spectrum: {error_msg}")
 
             if result > buffer_size:
+                logger.debug(
+                    f"Buffer resized from {buffer_size} to {result} for frame {frame_id}"
+                )
                 # Buffer too small, resize and try again
                 buffer_size = result
                 continue
