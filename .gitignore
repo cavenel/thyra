@@ -1,17 +1,44 @@
+# Python cache and build files
 *.pyc
-.vscode
-.pytest_cache
-*zarr
+*.pyo
+*.pyc
+__pycache__/
+*.egg-info/
+build/
+dist/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Output and data files
+*zarr/
 *.prof
-Archive
+Archive/
 *imzML
 *ibd
 *.d
-*egg-info
-.coverage
 *.mis
 *.slx
 *.tiff
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Temporary files
+temp_*
+test_output*/
 
 # Claude Code files - should not be committed
 .claude/
