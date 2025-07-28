@@ -12,6 +12,7 @@ Archive
 *.mis
 *.slx
 *.tiff
+*.ipynb
 
 # Claude Code files - should not be committed
 .claude/
