@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 from scipy import sparse
 
-from msiconvert.converters.spatialdata_converter import SpatialDataConverter
+from msiconvert.converters.spatialdata import SpatialDataConverter
 
 
 class TestSpatialDataConverter:
