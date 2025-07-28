@@ -74,7 +74,10 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         """
         # Check if SpatialData is available
         if not SPATIALDATA_AVAILABLE:
-            error_msg = f"SpatialData dependencies not available: {_import_error_msg}. Please install required packages or fix dependency conflicts."
+            error_msg = (
+                f"SpatialData dependencies not available: {_import_error_msg}. "
+                f"Please install required packages or fix dependency conflicts."
+            )
             raise ImportError(error_msg)
 
         # Validate inputs
@@ -410,7 +413,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             metadata.metadata = metadata_dict
 
             logging.info(
-                f"Comprehensive metadata persisted to SpatialData with {len(metadata_dict)} top-level sections"
+                f"Comprehensive metadata persisted to SpatialData with "
+                f"{len(metadata_dict)} top-level sections"
             )
 
     @abstractmethod

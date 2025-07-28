@@ -100,7 +100,10 @@ class BrukerMetadataExtractor(MetadataExtractor):
                 missing_mass_keys.append("MzAcqRangeUpper")
 
             if missing_mass_keys:
-                error_msg = f"Missing critical mass range bounds in GlobalMetadata: {', '.join(missing_mass_keys)}. Cannot establish mass range."
+                error_msg = (
+                    f"Missing critical mass range bounds in GlobalMetadata: "
+                    f"{', '.join(missing_mass_keys)}. Cannot establish mass range."
+                )
                 logger.error(error_msg)
                 raise ValueError(error_msg)
 
@@ -307,7 +310,8 @@ class BrukerMetadataExtractor(MetadataExtractor):
 
             # Extract frame info for tests that expect it
             cursor.execute(
-                "SELECT Id, SpotXPos, SpotYPos, BeamScanSizeX, BeamScanSizeY FROM MaldiFrameLaserInfo"
+                "SELECT Id, SpotXPos, SpotYPos, BeamScanSizeX, BeamScanSizeY "
+                "FROM MaldiFrameLaserInfo"
             )
             frame_info = []
             for row in cursor.fetchall():

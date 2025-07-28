@@ -1,4 +1,6 @@
-# Pre-commit hooks configuration
+# Gradual migration pre-commit configuration
+# This is a softer version for initial adoption before moving to the stricter config
+
 repos:
   # Basic file formatting and checks
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -14,7 +16,6 @@ repos:
         args: [--maxkb=1000]
       - id: check-merge-conflict
       - id: debug-statements
-      - id: check-docstring-first
       - id: check-case-conflict
       - id: mixed-line-ending
         args: [--fix=lf]
@@ -33,40 +34,23 @@ repos:
       - id: isort
         args: ["--profile", "black"]
 
-  # Code linting with stricter rules
+  # Code linting with gradual strictness
   - repo: https://github.com/pycqa/flake8
     rev: 7.1.0
     hooks:
       - id: flake8
         args: [
           "--max-line-length=100",
-          "--extend-ignore=E203,W503",  # E203: black compatibility, W503: line break before binary operator (conflicts with W504)
-          "--per-file-ignores=__init__.py:F401,F403",  # Allow unused imports in __init__.py files only
-          "--max-complexity=10"
+          "--extend-ignore=E203,W503,F401,F403,E402,E501",  # Keep more ignores initially
+          "--per-file-ignores=__init__.py:F401,F403",
+          "--max-complexity=15"  # Start with higher complexity limit
         ]
 
-  # Type checking
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.10.1
-    hooks:
-      - id: mypy
-        args: [--ignore-missing-imports, --no-strict-optional]
-        additional_dependencies: [types-requests, types-PyYAML]
-        exclude: ^(tests/|docs/)
-
-  # Security scanning
+  # Security scanning (exclude tests initially)
   - repo: https://github.com/PyCQA/bandit
     rev: 1.7.9
     hooks:
       - id: bandit
-        args: ["-c", "pyproject.toml"]
+        args: ["-c", "pyproject.toml", "--skip", "B101,B601"]
         additional_dependencies: ["bandit[toml]"]
         exclude: ^tests/
-
-  # Docstring formatting
-  - repo: https://github.com/pycqa/pydocstyle
-    rev: 6.3.0
-    hooks:
-      - id: pydocstyle
-        args: [--convention=google, --add-ignore=D100,D104,D105]
-        exclude: ^(tests/|docs/)

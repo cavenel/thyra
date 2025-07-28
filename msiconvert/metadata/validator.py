@@ -89,10 +89,16 @@ class ImzMLOntologyValidator:
             f"Total CV terms found: {results['total_terms']}",
             # To avoid division by zero if no terms are found
             f"Unique CV terms: {len(results['term_counts'])}",
-            f"Known terms: {results['known_terms']} ({results['known_terms']/results['total_terms']*100:.1f}%)"
+            (
+                f"Known terms: {results['known_terms']} "
+                f"({results['known_terms']/results['total_terms']*100:.1f}%)"
+            )
             if results["total_terms"] > 0
             else "Known terms: 0 (0.0%)",
-            f"Unknown terms: {results['unknown_terms']} ({results['unknown_terms']/results['total_terms']*100:.1f}%)"
+            (
+                f"Unknown terms: {results['unknown_terms']} "
+                f"({results['unknown_terms']/results['total_terms']*100:.1f}%)"
+            )
             if results["total_terms"] > 0
             else "Unknown terms: 0 (0.0%)",
         ]

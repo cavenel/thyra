@@ -103,8 +103,14 @@ class ImzMLReader(BaseMSIReader):
             raise ValueError("Failed to parse metadata from imzML file.")
 
         # Determine file mode
-        self.is_continuous = "continuous" in self.parser.metadata.file_description.param_by_name  # type: ignore
-        self.is_processed = "processed" in self.parser.metadata.file_description.param_by_name  # type: ignore
+        # Determine if file is continuous mode
+        self.is_continuous = (
+            "continuous" in self.parser.metadata.file_description.param_by_name  # type: ignore
+        )
+        # Determine if file is processed mode
+        self.is_processed = (
+            "processed" in self.parser.metadata.file_description.param_by_name  # type: ignore
+        )
 
         if self.is_continuous == self.is_processed:
             raise ValueError(
@@ -211,7 +217,8 @@ class ImzMLReader(BaseMSIReader):
 
                     self._common_mass_axis = unique_mzs
                     logging.info(
-                        f"Created common mass axis with {len(self._common_mass_axis)} unique m/z values"
+                        f"Created common mass axis with {len(self._common_mass_axis)} "
+                        f"unique m/z values"
                     )
                 except Exception as e:
                     # Re-raise with more context

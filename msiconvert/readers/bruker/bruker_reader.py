@@ -75,7 +75,8 @@ def _get_frame_coordinates(
     Args:
         db_path: Path to the SQLite database file
         frame_id: Frame ID to look up
-        coordinate_offsets: Optional coordinate offsets for normalization (x_offset, y_offset, z_offset)
+        coordinate_offsets: Optional coordinate offsets for normalization
+                           (x_offset, y_offset, z_offset)
 
     Returns:
         Tuple of normalized (x, y, z) coordinates (0-based), or None if not found
@@ -195,7 +196,8 @@ class BrukerReader(BaseMSIReader):
             else "with fallback spectrum reading"
         )
         logger.info(
-            f"Initialized BrukerReader for {self.file_type.upper()} data at {data_path} ({cache_status})"
+            f"Initialized BrukerReader for {self.file_type.upper()} data at "
+            f"{data_path} ({cache_status})"
         )
 
     def _validate_data_path(self) -> None:

@@ -6,7 +6,7 @@ featuring two-phase extraction (essential and comprehensive) optimized for inter
 analysis workflows.
 
 Architecture:
-- Two-phase extraction: Fast essential metadata for processing decisions, comprehensive metadata for complete information
+- Two-phase extraction: Fast essential metadata for processing, comprehensive for analysis
 - Format-specific extractors: Optimized for ImzML and Bruker formats
 - Structured data types: Type-safe dataclasses for metadata representation
 - Caching and lazy loading: Efficient metadata access patterns

@@ -140,7 +140,8 @@ class BaseMSIConverter(ABC):
 
         total_spectra = self._get_total_spectra_count()
         logging.info(
-            f"Converting {total_spectra} spectra to {self.__class__.__name__.replace('Converter', '')} format..."
+            f"Converting {total_spectra} spectra to "
+            f"{self.__class__.__name__.replace('Converter', '')} format..."
         )
 
         setattr(self.reader, "_quiet_mode", True)
@@ -184,7 +185,8 @@ class BaseMSIConverter(ABC):
                 self._dimensions[0] * self._dimensions[1] * self._dimensions[2]
             )
             logging.warning(
-                f"Could not determine exact spectra count, estimating {total_pixels} from dimensions"
+                f"Could not determine exact spectra count, estimating {total_pixels} "
+                f"from dimensions"
             )
             return total_pixels
 

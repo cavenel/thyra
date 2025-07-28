@@ -86,7 +86,8 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
         n_masses = len(self._common_mass_axis)
 
         logging.info(
-            f"Creating sparse matrix for slice z={z_value} with {n_pixels} pixels and {n_masses} mass values"
+            f"Creating sparse matrix for slice z={z_value} with {n_pixels} pixels and "
+            f"{n_masses} mass values"
         )
         return sparse.lil_matrix((n_pixels, n_masses), dtype=np.float64)
 

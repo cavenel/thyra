@@ -17,7 +17,8 @@ class EssentialMetadata:
     n_spectra: int  # Total number of spectra
     estimated_memory_gb: float  # Memory usage estimate
     source_path: str  # Path to source data
-    coordinate_offsets: Optional[Tuple[int, int, int]] = None  # (x_offset, y_offset, z_offset) for raw coordinate normalization
+    # (x_offset, y_offset, z_offset) for raw coordinate normalization
+    coordinate_offsets: Optional[Tuple[int, int, int]] = None
 
     @property
     def spatial_extent(self) -> Tuple[float, float]:

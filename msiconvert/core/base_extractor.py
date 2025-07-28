@@ -75,7 +75,8 @@ class MetadataExtractor(ABC):
             essential = self.get_essential()
             self._comprehensive_cache = self._extract_comprehensive_impl()
             logging.debug(
-                f"Comprehensive metadata extracted with {len(self._comprehensive_cache.raw_metadata)} raw entries"
+                f"Comprehensive metadata extracted with "
+                f"{len(self._comprehensive_cache.raw_metadata)} raw entries"
             )
         return self._comprehensive_cache
 

@@ -196,7 +196,9 @@ class SDKFunctions:
         buffer_size = buffer_size_hint if buffer_size_hint and buffer_size_hint > 0 else 1024
         
         if self.file_type == "tsf":
-            return self._read_tsf_spectrum(handle, frame_id, buffer_size, buffer_size_hint is not None)
+            return self._read_tsf_spectrum(
+                handle, frame_id, buffer_size, buffer_size_hint is not None
+            )
         else:  # tdf
             return self._read_tdf_spectrum(handle, frame_id, buffer_size)
 
@@ -243,7 +245,10 @@ class SDKFunctions:
                     return mzs, intensities[:result].copy()
                 else:
                     # Buffer hint was too small, fall back to retry logic
-                    logger.debug(f"Buffer hint {buffer_size} too small for frame {frame_id} (needed {result}), falling back")
+                    logger.debug(
+                        f"Buffer hint {buffer_size} too small for frame {frame_id} "
+                        f"(needed {result}), falling back"
+                    )
                     
             except Exception as e:
                 logger.debug(f"Optimized read failed for frame {frame_id}: {e}, falling back")

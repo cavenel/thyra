@@ -30,7 +30,10 @@ def convert_msi(
     handle_3d: bool = False,
     **kwargs,
 ) -> bool:
-    """Convert MSI data to the specified format with enhanced error handling and automatic pixel size detection."""
+    """
+    Convert MSI data to the specified format with enhanced error handling and 
+    automatic pixel size detection.
+    """
 
     if not input_path or not isinstance(input_path, (str, Path)):
         logging.error("Input path must be a valid string or Path object")
