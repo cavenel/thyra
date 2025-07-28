@@ -25,7 +25,7 @@ from .convert import convert_msi
 
 # Import key components - avoid wildcard imports
 try:
-    from .converters.spatialdata_converter import SpatialDataConverter
+    from .converters.spatialdata.converter import SpatialDataConverter
 except ImportError:
     # SpatialData dependencies not available
     SpatialDataConverter = None

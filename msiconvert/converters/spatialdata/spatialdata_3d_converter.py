@@ -6,13 +6,13 @@ from typing import Any, Dict, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
-from .base_spatialdata_converter import BaseSpatialDataConverter, SPATIALDATA_AVAILABLE
+from .base_spatialdata_converter import SPATIALDATA_AVAILABLE, BaseSpatialDataConverter
 
 if SPATIALDATA_AVAILABLE:
+    import xarray as xr
     from anndata import AnnData
     from spatialdata.models import Image2DModel, TableModel
     from spatialdata.transformations import Identity
-    import xarray as xr
 
 
 class SpatialData3DConverter(BaseSpatialDataConverter):
@@ -20,7 +20,7 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
 
     def __init__(self, *args, **kwargs):
         """Initialize 3D converter with handle_3d=True."""
-        kwargs['handle_3d'] = True  # Force 3D mode
+        kwargs["handle_3d"] = True  # Force 3D mode
         super().__init__(*args, **kwargs)
 
     def _create_data_structures(self) -> Dict[str, Any]:
@@ -158,6 +158,7 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
         except Exception as e:
             logging.error(f"Error processing 3D volume: {e}")
             import traceback
+
             logging.debug(f"Detailed traceback:\n{traceback.format_exc()}")
             raise
 
@@ -196,19 +197,21 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
             transform = Identity()
             try:
                 from spatialdata.models import Image3DModel
-                data_structures["images"][f"{self.dataset_id}_tic"] = Image3DModel.parse(
-                    tic_image,
-                    transformations={
-                        self.dataset_id: transform,
-                        "global": transform,
-                    },
+
+                data_structures["images"][f"{self.dataset_id}_tic"] = (
+                    Image3DModel.parse(
+                        tic_image,
+                        transformations={
+                            self.dataset_id: transform,
+                            "global": transform,
+                        },
+                    )
                 )
             except (ImportError, AttributeError):
                 # Fallback if Image3DModel is not available
-                logging.warning(
-                    "Image3DModel not available, using generic image model"
-                )
+                logging.warning("Image3DModel not available, using generic image model")
                 from spatialdata.models import ImageModel
+
                 data_structures["images"][f"{self.dataset_id}_tic"] = ImageModel.parse(
                     tic_image,
                     transformations={
@@ -219,11 +222,11 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
         else:
             # Single 2D slice
             tic_values = data_structures["tic_values"]
-            
+
             # Handle both 3D array with single z-slice and 2D array
             if len(tic_values.shape) == 3:
                 tic_values = tic_values[:, :, 0]
-            
+
             y_size, x_size = tic_values.shape
 
             # Add channel dimension to make it (c, y, x)

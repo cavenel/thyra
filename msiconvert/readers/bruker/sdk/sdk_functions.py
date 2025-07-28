@@ -193,8 +193,10 @@ class SDKFunctions:
             SDKError: If spectrum cannot be read
         """
         # Use optimized buffer size if provided, otherwise default
-        buffer_size = buffer_size_hint if buffer_size_hint and buffer_size_hint > 0 else 1024
-        
+        buffer_size = (
+            buffer_size_hint if buffer_size_hint and buffer_size_hint > 0 else 1024
+        )
+
         if self.file_type == "tsf":
             return self._read_tsf_spectrum(
                 handle, frame_id, buffer_size, buffer_size_hint is not None
@@ -207,7 +209,7 @@ class SDKFunctions:
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Read spectrum from TSF file with optional optimization.
-        
+
         Args:
             handle: File handle
             frame_id: Frame ID to read
@@ -241,7 +243,9 @@ class SDKFunctions:
 
                 if result <= buffer_size:
                     # SUCCESS: Exact buffer size worked!
-                    mzs = self._convert_indices_to_mz(handle, frame_id, mz_indices[:result])
+                    mzs = self._convert_indices_to_mz(
+                        handle, frame_id, mz_indices[:result]
+                    )
                     return mzs, intensities[:result].copy()
                 else:
                     # Buffer hint was too small, fall back to retry logic
@@ -249,9 +253,11 @@ class SDKFunctions:
                         f"Buffer hint {buffer_size} too small for frame {frame_id} "
                         f"(needed {result}), falling back"
                     )
-                    
+
             except Exception as e:
-                logger.debug(f"Optimized read failed for frame {frame_id}: {e}, falling back")
+                logger.debug(
+                    f"Optimized read failed for frame {frame_id}: {e}, falling back"
+                )
 
         # FALLBACK PATH: Use original retry loop logic
         return self._read_tsf_spectrum_with_retries(handle, frame_id, buffer_size)

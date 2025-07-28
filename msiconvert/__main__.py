@@ -1,11 +1,9 @@
 # msiconvert/__main__.py
 import argparse
 import logging
-import sys
 from pathlib import Path
 
 from msiconvert.convert import convert_msi
-from msiconvert.core.registry import detect_format, get_reader_class
 from msiconvert.utils.data_processors import optimize_zarr_chunks
 from msiconvert.utils.logging_config import setup_logging
 

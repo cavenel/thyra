@@ -76,7 +76,7 @@ class BrukerMetadataExtractor(MetadataExtractor):
 
             # Store imaging area offsets for coordinate normalization
             imaging_area_offsets = (int(imaging_min_x), int(imaging_min_y), 0)
-            
+
             # Normalize coordinates to start from 0
             min_x = 0.0  # Normalized coordinates always start from 0
             max_x = float(imaging_max_x - imaging_min_x)
@@ -242,14 +242,14 @@ class BrukerMetadataExtractor(MetadataExtractor):
                     params["laser_frequency"] = laser_freq
                 if beam_x is not None:
                     params["beam_scan_size_x"] = beam_x
-                    params[
-                        "BeamScanSizeX"
-                    ] = beam_x  # Add both formats for compatibility
+                    params["BeamScanSizeX"] = (
+                        beam_x  # Add both formats for compatibility
+                    )
                 if beam_y is not None:
                     params["beam_scan_size_y"] = beam_y
-                    params[
-                        "BeamScanSizeY"
-                    ] = beam_y  # Add both formats for compatibility
+                    params["BeamScanSizeY"] = (
+                        beam_y  # Add both formats for compatibility
+                    )
                 if spot_size is not None:
                     params["laser_spot_size"] = spot_size
 

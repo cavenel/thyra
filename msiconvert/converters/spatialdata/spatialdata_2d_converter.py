@@ -8,13 +8,13 @@ import pandas as pd
 from numpy.typing import NDArray
 from scipy import sparse
 
-from .base_spatialdata_converter import BaseSpatialDataConverter, SPATIALDATA_AVAILABLE
+from .base_spatialdata_converter import SPATIALDATA_AVAILABLE, BaseSpatialDataConverter
 
 if SPATIALDATA_AVAILABLE:
+    import xarray as xr
     from anndata import AnnData
     from spatialdata.models import Image2DModel, TableModel
     from spatialdata.transformations import Identity
-    import xarray as xr
 
 
 class SpatialData2DConverter(BaseSpatialDataConverter):
@@ -22,7 +22,7 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
 
     def __init__(self, *args, **kwargs):
         """Initialize 2D converter with handle_3d=False."""
-        kwargs['handle_3d'] = False  # Force 2D mode
+        kwargs["handle_3d"] = False  # Force 2D mode
         super().__init__(*args, **kwargs)
 
     def _create_data_structures(self) -> Dict[str, Any]:
@@ -39,7 +39,7 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
 
         if self._dimensions is None:
             raise ValueError("Dimensions are not initialized")
-        
+
         n_x, n_y, n_z = self._dimensions
 
         # Create a structure for each slice
@@ -106,7 +106,7 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
 
         n_x, n_y, _ = self._dimensions
 
-        # Pre-allocate arrays for better performance 
+        # Pre-allocate arrays for better performance
         pixel_count = n_x * n_y
         y_values: NDArray[np.int32] = np.repeat(np.arange(n_y, dtype=np.int32), n_x)
         x_values: NDArray[np.int32] = np.tile(np.arange(n_x, dtype=np.int32), n_y)
@@ -261,5 +261,6 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
             except Exception as e:
                 logging.error(f"Error processing slice {slice_id}: {e}")
                 import traceback
+
                 logging.debug(f"Detailed traceback:\n{traceback.format_exc()}")
                 raise

@@ -227,9 +227,7 @@ class ImzMLReader(BaseMSIReader):
         # Return the common mass axis
         return self._common_mass_axis
 
-    def iter_spectra(
-        self, batch_size: Optional[int] = None
-    ) -> Generator[
+    def iter_spectra(self, batch_size: Optional[int] = None) -> Generator[
         Tuple[Tuple[int, int, int], NDArray[np.float64], NDArray[np.float64]],
         None,
         None,

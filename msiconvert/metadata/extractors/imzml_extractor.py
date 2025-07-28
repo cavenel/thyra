@@ -160,9 +160,11 @@ class ImzMLMetadataExtractor(MetadataExtractor):
         """Extract ImzML format-specific metadata."""
         format_specific = {
             "imzml_version": "1.1.0",  # Default version
-            "file_mode": "continuous"
-            if getattr(self.parser, "continuous", False)
-            else "processed",
+            "file_mode": (
+                "continuous"
+                if getattr(self.parser, "continuous", False)
+                else "processed"
+            ),
             "ibd_file": str(self.imzml_path.with_suffix(".ibd")),
             "uuid": None,
             "spectrum_count": len(self.parser.coordinates),

@@ -176,10 +176,10 @@ class BatchProcessor:
 
         # Setup progress tracking
         pbar = tqdm(
-            total=total_spectra, 
-            desc="Processing batches", 
+            total=total_spectra,
+            desc="Processing batches",
             unit="spectrum",
-            disable=getattr(self, "_quiet_mode", False)
+            disable=getattr(self, "_quiet_mode", False),
         )
 
         try:
@@ -265,10 +265,10 @@ class BatchProcessor:
             batch_size = initial_batch_size
 
         pbar = tqdm(
-            total=total_spectra, 
-            desc="Adaptive processing", 
+            total=total_spectra,
+            desc="Adaptive processing",
             unit="spectrum",
-            disable=getattr(self, "_quiet_mode", False)
+            disable=getattr(self, "_quiet_mode", False),
         )
 
         try:
@@ -365,10 +365,10 @@ class BatchProcessor:
         processed = 0
 
         pbar = tqdm(
-            total=total_items, 
-            desc="Memory-aware processing", 
+            total=total_items,
+            desc="Memory-aware processing",
             unit="item",
-            disable=getattr(self, "_quiet_mode", False)
+            disable=getattr(self, "_quiet_mode", False),
         )
 
         try:

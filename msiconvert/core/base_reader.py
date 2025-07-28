@@ -57,9 +57,7 @@ class BaseMSIReader(ABC):
         pass
 
     @abstractmethod
-    def iter_spectra(
-        self, batch_size: Optional[int] = None
-    ) -> Generator[
+    def iter_spectra(self, batch_size: Optional[int] = None) -> Generator[
         Tuple[Tuple[int, int, int], NDArray[np.float64], NDArray[np.float64]],
         None,
         None,

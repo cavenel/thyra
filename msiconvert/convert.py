@@ -4,9 +4,7 @@ import traceback
 import warnings
 from pathlib import Path
 
-from .core.base_reader import BaseMSIReader
 from .core.registry import detect_format, get_converter_class, get_reader_class
-from .metadata.types import EssentialMetadata
 
 warnings.filterwarnings(
     "ignore",
@@ -31,7 +29,7 @@ def convert_msi(
     **kwargs,
 ) -> bool:
     """
-    Convert MSI data to the specified format with enhanced error handling and 
+    Convert MSI data to the specified format with enhanced error handling and
     automatic pixel size detection.
     """
 
