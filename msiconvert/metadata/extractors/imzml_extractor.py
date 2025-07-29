@@ -1,6 +1,5 @@
 # msiconvert/metadata/extractors/imzml_extractor.py
 import logging
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 

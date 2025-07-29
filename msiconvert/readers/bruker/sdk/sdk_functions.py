@@ -309,8 +309,6 @@ class SDKFunctions:
         # For TDF files, we need to read scans and combine them
         # This is a simplified version - full implementation would handle mobility
 
-        dll = self.dll_manager.dll
-
         # Read scans for the frame
         scan_data = self._read_scans(
             handle, frame_id - 1, 0, 100

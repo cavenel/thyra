@@ -106,14 +106,6 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
             raise ImportError("SpatialData dependencies not available")
 
         try:
-            # Calculate average mass spectrum
-            if data_structures["pixel_count"] > 0:
-                avg_spectrum = (
-                    data_structures["total_intensity"] / data_structures["pixel_count"]
-                )
-            else:
-                avg_spectrum = data_structures["total_intensity"].copy()
-
             # Store pixel count for metadata
             self._non_empty_pixel_count = data_structures["pixel_count"]
 

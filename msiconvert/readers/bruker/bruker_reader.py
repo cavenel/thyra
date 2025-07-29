@@ -9,7 +9,7 @@ import logging
 import os
 import sqlite3
 from pathlib import Path
-from typing import Any, Dict, Generator, Optional, Tuple
+from typing import Dict, Generator, Optional, Tuple
 
 import numpy as np
 from tqdm import tqdm

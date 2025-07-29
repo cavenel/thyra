@@ -1,7 +1,7 @@
 # msiconvert/core/base_reader.py
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Generator, Optional, Tuple
+from typing import TYPE_CHECKING, Generator, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray

@@ -1,9 +1,6 @@
 # msiconvert/metadata/core/metadata_types.py
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
-
-import numpy as np
-from numpy.typing import NDArray
+from typing import Any, Dict, Optional, Tuple
 
 
 @dataclass(frozen=True)

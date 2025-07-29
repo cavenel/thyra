@@ -17,7 +17,7 @@ if platform.system() == "Windows":
 else:
     windll = None
 
-from ....utils.bruker_exceptions import ConfigurationError, SDKError
+from ....utils.bruker_exceptions import SDKError
 from .platform_detector import PlatformDetector, get_dll_paths, validate_library_path
 
 logger = logging.getLogger(__name__)

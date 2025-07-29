@@ -8,6 +8,11 @@ into the modern SpatialData/Zarr format with automatic pixel size detection.
 # Suppress known warnings from dependencies
 import warnings
 
+# Import readers and converters to trigger registration
+from . import converters  # This triggers converter registrations  # noqa: F401
+from . import readers  # This triggers reader registrations  # noqa: F401
+from .convert import convert_msi
+
 warnings.filterwarnings("ignore", category=FutureWarning, module="dask")
 warnings.filterwarnings("ignore", category=FutureWarning, module="spatialdata")
 warnings.filterwarnings("ignore", category=RuntimeWarning, module="numba")
@@ -17,11 +22,6 @@ warnings.filterwarnings(
 )
 
 __version__ = "1.8.3"
-
-# Import readers and converters to trigger registration
-from . import converters  # This triggers converter registrations
-from . import readers  # This triggers reader registrations
-from .convert import convert_msi
 
 # Import key components - avoid wildcard imports
 try:

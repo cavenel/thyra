@@ -146,7 +146,6 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         n_x, n_y, n_z = self._dimensions
 
         # Pre-allocate arrays for better performance
-        pixel_count = n_x * n_y * n_z
         coords_data = []
 
         pixel_idx = 0

@@ -7,7 +7,7 @@ batches with progress tracking and memory management.
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Optional
 
 import numpy as np
 from tqdm import tqdm
