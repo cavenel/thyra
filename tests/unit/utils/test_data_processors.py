@@ -1,6 +1,7 @@
 """
 Tests for data processing utilities.
 """
+
 from unittest.mock import MagicMock, patch
 
 from msiconvert.utils.data_processors import optimize_zarr_chunks

@@ -20,11 +20,7 @@ import numpy as np
 
 # Import the reader from the proper location
 from msiconvert.readers.bruker.bruker_reader import BrukerReader
-from msiconvert.utils.bruker_exceptions import (
-    BrukerReaderError,
-    DataError,
-    SDKError,
-)
+from msiconvert.utils.bruker_exceptions import BrukerReaderError, DataError, SDKError
 
 logger = logging.getLogger(__name__)
 
@@ -87,7 +83,9 @@ class BrukerReaderTester:
                     "error": None,
                 }
 
-                print(f"✅ {test_name}: PASSED ({(end_time - start_time) * 1000:.1f}ms)")
+                print(
+                    f"✅ {test_name}: PASSED ({(end_time - start_time) * 1000:.1f}ms)"
+                )
 
             except Exception as e:
                 end_time = time.time()
@@ -256,7 +254,7 @@ class BrukerReaderTester:
             # Read some spectra to test iteration
             spectrum_count = 0
             total_peaks = 0
-            
+
             for coords, mzs, intensities in reader.iter_spectra():
                 spectrum_count += 1
                 total_peaks += len(mzs)
@@ -266,7 +264,9 @@ class BrukerReaderTester:
             return {
                 "spectrum_count": spectrum_count,
                 "total_peaks": total_peaks,
-                "avg_peaks_per_spectrum": total_peaks / spectrum_count if spectrum_count > 0 else 0,
+                "avg_peaks_per_spectrum": (
+                    total_peaks / spectrum_count if spectrum_count > 0 else 0
+                ),
             }
 
     def test_sequential_processing(self) -> Dict[str, Any]:
@@ -286,8 +286,9 @@ class BrukerReaderTester:
             return {
                 "spectra_processed": spectrum_count,
                 "duration_ms": (end_time - start_time) * 1000,
-                "spectra_per_second": spectrum_count / max(0.001, end_time - start_time),
-                "note": "batch_size parameter ignored in implementation"
+                "spectra_per_second": spectrum_count
+                / max(0.001, end_time - start_time),
+                "note": "batch_size parameter ignored in implementation",
             }
 
     def test_performance(self) -> Dict[str, Any]:

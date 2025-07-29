@@ -1,6 +1,7 @@
 """
 Common test fixtures for msiconvert tests.
 """
+
 import tempfile
 from pathlib import Path
 

@@ -2,6 +2,7 @@
 Integration tests for converting Bruker files to various formats.
 These tests will be skipped if Bruker dependencies are not available.
 """
+
 import sys
 
 # Skip all tests if Bruker DLL/shared library is not available
@@ -35,9 +36,11 @@ class TestBrukerConversion:
         "msiconvert.readers.bruker_reader.BrukerReader._find_dll_path",
         return_value=Path("mock_timsdata.dll"),
     )
-    @ patch("ctypes.windll", new_callable=MagicMock) if sys.platform.startswith(
-        "win32"
-    ) else patch("ctypes.cdll", new_callable=MagicMock)
+    @(
+        patch("ctypes.windll", new_callable=MagicMock)
+        if sys.platform.startswith("win32")
+        else patch("ctypes.cdll", new_callable=MagicMock)
+    )
     @patch("sqlite3.connect")
     def test_detect_bruker_format(
         self, mock_sqlite3, mock_dll, mock_find_dll_path, mock_bruker_data_dir
@@ -53,9 +56,11 @@ class TestBrukerConversion:
         not pytest.importorskip("spatialdata", reason="SpatialData not installed"),
         reason="SpatialData not installed",
     )
-    @ patch("ctypes.windll", new_callable=MagicMock) if sys.platform.startswith(
-        "win32"
-    ) else patch("ctypes.cdll", new_callable=MagicMock)
+    @(
+        patch("ctypes.windll", new_callable=MagicMock)
+        if sys.platform.startswith("win32")
+        else patch("ctypes.cdll", new_callable=MagicMock)
+    )
     @patch("sqlite3.connect")
     def test_convert_to_spatialdata(
         self, mock_sqlite3, mock_dll, mock_bruker_data_dir, temp_dir

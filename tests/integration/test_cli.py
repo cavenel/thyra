@@ -1,6 +1,7 @@
 """
 Integration tests for the command-line interface.
 """
+
 import sys
 
 import pytest

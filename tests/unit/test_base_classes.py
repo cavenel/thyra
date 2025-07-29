@@ -1,6 +1,7 @@
 """
 Tests for the base reader and converter classes.
 """
+
 from pathlib import Path
 
 import numpy as np

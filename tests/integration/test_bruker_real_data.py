@@ -93,8 +93,8 @@ class TestBrukerRealData:
         with BrukerReader(bruker_data_path) as reader:
             # Test metadata
             metadata = reader.get_comprehensive_metadata()
-            assert hasattr(metadata, 'essential')
-            assert hasattr(metadata.essential, 'source_path')
+            assert hasattr(metadata, "essential")
+            assert hasattr(metadata.essential, "source_path")
             assert str(metadata.essential.source_path) == str(bruker_data_path)
 
             # Test dimensions

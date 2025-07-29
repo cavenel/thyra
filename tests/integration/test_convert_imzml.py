@@ -1,6 +1,7 @@
 """
 Integration tests for converting imzML files to various formats.
 """
+
 import pytest
 
 from msiconvert.convert import convert_msi

@@ -95,9 +95,7 @@ class TestImzMLMetadataExtractor:
         mock_parser.metadata.find.side_effect = lambda accession: (
             [mock_x_param]
             if accession == "IMS:1000046"
-            else [mock_y_param]
-            if accession == "IMS:1000047"
-            else []
+            else [mock_y_param] if accession == "IMS:1000047" else []
         )
 
         mock_imzml_parser_class.return_value = mock_parser

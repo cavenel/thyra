@@ -1,6 +1,7 @@
 """
 Tests for the SpatialData converter.
 """
+
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -168,9 +169,14 @@ class TestSpatialDataConverter:
         mock_table_model.parse.return_value = mock_table
 
         # Mock create_pixel_shapes - need to import the base class for patching
-        from msiconvert.converters.spatialdata.base_spatialdata_converter import BaseSpatialDataConverter
+        from msiconvert.converters.spatialdata.base_spatialdata_converter import (
+            BaseSpatialDataConverter,
+        )
+
         original_create_pixel_shapes = BaseSpatialDataConverter._create_pixel_shapes
-        BaseSpatialDataConverter._create_pixel_shapes = MagicMock(return_value=MagicMock())
+        BaseSpatialDataConverter._create_pixel_shapes = MagicMock(
+            return_value=MagicMock()
+        )
 
         try:
             # Initialize converter
@@ -236,9 +242,14 @@ class TestSpatialDataConverter:
         mock_table_model.parse.return_value = mock_table
 
         # Mock create_pixel_shapes - need to import the base class for patching
-        from msiconvert.converters.spatialdata.base_spatialdata_converter import BaseSpatialDataConverter
+        from msiconvert.converters.spatialdata.base_spatialdata_converter import (
+            BaseSpatialDataConverter,
+        )
+
         original_create_pixel_shapes = BaseSpatialDataConverter._create_pixel_shapes
-        BaseSpatialDataConverter._create_pixel_shapes = MagicMock(return_value=MagicMock())
+        BaseSpatialDataConverter._create_pixel_shapes = MagicMock(
+            return_value=MagicMock()
+        )
 
         try:
             # Initialize converter
@@ -350,8 +361,10 @@ class TestSpatialDataConverter:
         output_path = temp_dir / "test_output.zarr"
 
         # Import the base class to access the method
-        from msiconvert.converters.spatialdata.base_spatialdata_converter import BaseSpatialDataConverter
-        
+        from msiconvert.converters.spatialdata.base_spatialdata_converter import (
+            BaseSpatialDataConverter,
+        )
+
         # Spy on the implementation to understand why write is not being called
         original_save_output = BaseSpatialDataConverter._save_output
 

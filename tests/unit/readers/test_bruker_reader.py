@@ -3,6 +3,7 @@ Tests for the Bruker reader.
 Note: Full testing requires actual Bruker files and the timsdata DLL.
 These tests focus on structure and mocking.
 """
+
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -65,9 +66,11 @@ class TestBrukerReaderStructure:
 class TestBrukerReaderWithMocks:
     """Test Bruker reader functionality using mocks."""
 
-    @ patch("ctypes.windll", new_callable=MagicMock) if sys.platform.startswith(
-        "win32"
-    ) else patch("ctypes.cdll", new_callable=MagicMock)
+    @(
+        patch("ctypes.windll", new_callable=MagicMock)
+        if sys.platform.startswith("win32")
+        else patch("ctypes.cdll", new_callable=MagicMock)
+    )
     @patch("sqlite3.connect")
     def test_initialization(self, mock_sqlite3, mock_dll, mock_bruker_data):
         """Test initialization with mocked dependencies."""
@@ -117,9 +120,11 @@ class TestBrukerReaderWithMocks:
         # Clean up
         reader.close()
 
-    @ patch("ctypes.windll", new_callable=MagicMock) if sys.platform.startswith(
-        "win32"
-    ) else patch("ctypes.cdll", new_callable=MagicMock)
+    @(
+        patch("ctypes.windll", new_callable=MagicMock)
+        if sys.platform.startswith("win32")
+        else patch("ctypes.cdll", new_callable=MagicMock)
+    )
     @patch("sqlite3.connect")
     def test_get_metadata(self, mock_sqlite3, mock_dll, mock_bruker_data):
         """Test getting metadata with mocked dependencies."""
@@ -196,9 +201,11 @@ class TestBrukerReaderWithMocks:
         # Clean up
         reader.close()
 
-    @ patch("ctypes.windll", new_callable=MagicMock) if sys.platform.startswith(
-        "win32"
-    ) else patch("ctypes.cdll", new_callable=MagicMock)
+    @(
+        patch("ctypes.windll", new_callable=MagicMock)
+        if sys.platform.startswith("win32")
+        else patch("ctypes.cdll", new_callable=MagicMock)
+    )
     @patch("sqlite3.connect")
     def test_get_dimensions(self, mock_sqlite3, mock_dll, mock_bruker_data):
         """Test getting dimensions with mocked dependencies."""
@@ -284,9 +291,11 @@ class TestBrukerReaderWithMocks:
             # Clean up
             reader.close()
 
-    @ patch("ctypes.windll", new_callable=MagicMock) if sys.platform.startswith(
-        "win32"
-    ) else patch("ctypes.cdll", new_callable=MagicMock)
+    @(
+        patch("ctypes.windll", new_callable=MagicMock)
+        if sys.platform.startswith("win32")
+        else patch("ctypes.cdll", new_callable=MagicMock)
+    )
     @patch("sqlite3.connect")
     def test_close(self, mock_sqlite3, mock_dll, mock_bruker_data):
         """Test closing the reader with mocked dependencies."""
