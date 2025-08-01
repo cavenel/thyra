@@ -8,9 +8,10 @@ import logging
 import os
 import sqlite3
 from pathlib import Path
-from typing import Dict, Generator, Optional, Tuple
+from typing import Callable, Dict, Generator, Optional, Tuple, Union
 
 import numpy as np
+from numpy.typing import NDArray
 from tqdm import tqdm
 
 # Set OpenMP thread limit before any SDK imports to control Bruker DLL threading
@@ -36,7 +37,10 @@ from .sdk.sdk_functions import SDKFunctions
 logger = logging.getLogger(__name__)
 
 
-def build_raw_mass_axis(spectra_iterator, progress_callback=None):
+def build_raw_mass_axis(
+    spectra_iterator: Generator[Tuple[Tuple[int, int, int], NDArray[np.float64], NDArray[np.float64]], None, None],
+    progress_callback: Optional[Callable[[int], None]] = None,
+) -> NDArray[np.float64]:
     """Build raw mass axis from spectra iterator.
 
     Raw Mass axis in case the user wants the full data. Not recommended for normal use.
@@ -147,7 +151,7 @@ class BrukerReader(BaseMSIReader):
         cache_coordinates: bool = True,
         memory_limit_gb: Optional[float] = None,
         batch_size: Optional[int] = None,
-        progress_callback: Optional[callable] = None,
+        progress_callback: Optional[Callable[[int, int], None]] = None,
         **kwargs,
     ):
         """Initialize the Bruker reader.
@@ -278,7 +282,7 @@ class BrukerReader(BaseMSIReader):
             raise ValueError("Database connection not available")
         return BrukerMetadataExtractor(self.conn, self.data_path)
 
-    def get_common_mass_axis(self) -> np.ndarray:
+    def get_common_mass_axis(self) -> NDArray[np.float64]:
         """Return the common mass axis composed of all unique m/z values.
 
         Returns:
@@ -289,7 +293,7 @@ class BrukerReader(BaseMSIReader):
 
         return self._common_mass_axis
 
-    def _build_common_mass_axis(self) -> np.ndarray:
+    def _build_common_mass_axis(self) -> NDArray[np.float64]:
         """Build the common mass axis."""
         logger.info("Building raw mass axis")
 
@@ -310,7 +314,7 @@ class BrukerReader(BaseMSIReader):
 
     def iter_spectra(
         self, batch_size: Optional[int] = None
-    ) -> Generator[Tuple[Tuple[int, int, int], np.ndarray, np.ndarray], None, None]:
+    ) -> Generator[Tuple[Tuple[int, int, int], NDArray[np.float64], NDArray[np.float64]], None, None]:
         """Iterate through all spectra sequentially.
 
         Args:
@@ -324,7 +328,7 @@ class BrukerReader(BaseMSIReader):
 
     def _iter_spectra_raw(
         self,
-    ) -> Generator[Tuple[Tuple[int, int, int], np.ndarray, np.ndarray], None, None]:
+    ) -> Generator[Tuple[Tuple[int, int, int], NDArray[np.float64], NDArray[np.float64]], None, None]:
         """Raw spectrum iteration without batching."""
         frame_count = self._get_frame_count()
         coordinate_offsets = self._get_coordinate_offsets()
@@ -544,5 +548,5 @@ class BrukerReader(BaseMSIReader):
         """Destructor to ensure cleanup."""
         try:
             self.close()
-        except Exception:
-            pass  # Ignore errors during destruction
+        except Exception as e:
+            logger.debug(f"Error during cleanup in destructor: {e}")  # Log but don't raise during destruction

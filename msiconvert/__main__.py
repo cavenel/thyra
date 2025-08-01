@@ -2,13 +2,14 @@
 import argparse
 import logging
 from pathlib import Path
+from typing import Optional
 
 from msiconvert.convert import convert_msi
 from msiconvert.utils.data_processors import optimize_zarr_chunks
 from msiconvert.utils.logging_config import setup_logging
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Convert MSI data to SpatialData format"
     )

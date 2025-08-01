@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from os import PathLike
 from pathlib import Path
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -36,7 +36,7 @@ class BaseMSIConverter(ABC):
         self.pixel_size_um = pixel_size_um
         self.compression_level = compression_level
         self.handle_3d = handle_3d
-        self.options: dict[str, Any] = kwargs
+        self.options: Dict[str, Any] = kwargs
         self._common_mass_axis: Optional[NDArray[np.float64]] = None
         self._dimensions: Optional[Tuple[int, int, int]] = None
         self._metadata: Optional[dict[str, Any]] = None
@@ -220,7 +220,7 @@ class BaseMSIConverter(ABC):
         # Default implementation - to be overridden by subclasses if needed
         pass
 
-    def _get_comprehensive_metadata(self) -> dict[str, Any]:
+    def _get_comprehensive_metadata(self) -> Dict[str, Any]:
         """Lazy load comprehensive metadata when needed."""
         if self._metadata is None:
             logging.info("Loading comprehensive metadata...")

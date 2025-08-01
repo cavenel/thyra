@@ -7,7 +7,7 @@ pre-commit hooks for continuous monitoring.
 """
 
 import json
-import subprocess
+import subprocess  # nosec B404 - Subprocess used safely for flake8 execution with controlled arguments
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -49,7 +49,7 @@ class ComplexityMonitor:
     def run_flake8_complexity(self) -> List[str]:
         """Run flake8 with complexity checking and return raw output lines."""
         try:
-            result = subprocess.run(
+            result = subprocess.run(  # nosec B603 - Safe subprocess call with controlled arguments and no shell execution
                 [
                     sys.executable,
                     "-m",
