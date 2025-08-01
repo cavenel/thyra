@@ -24,7 +24,7 @@ NC='\033[0m' # No Color
 # Help function
 show_help() {
     cat << EOF
-🔍 Complexity Monitoring Script for MSIConverter
+Complexity Monitoring Script for MSIConverter
 
 USAGE:
     $0 [OPTIONS]
@@ -85,13 +85,13 @@ done
 
 # Check if we're in a poetry environment
 if ! command -v poetry &> /dev/null; then
-    echo -e "${RED}❌ Poetry not found. Please install poetry first.${NC}" >&2
+    echo -e "${RED}ERROR: Poetry not found. Please install poetry first.${NC}" >&2
     exit 1
 fi
 
 # Check if project dependencies are installed
 if [ ! -d "$PROJECT_ROOT/.venv" ] && [ ! -f "$PROJECT_ROOT/poetry.lock" ]; then
-    echo -e "${YELLOW}⚠️  Installing project dependencies...${NC}"
+    echo -e "${YELLOW}WARNING: Installing project dependencies...${NC}"
     cd "$PROJECT_ROOT"
     poetry install
 fi
@@ -115,13 +115,13 @@ fi
 
 # Ensure click is available
 if ! poetry run python -c "import click" 2>/dev/null; then
-    echo -e "${YELLOW}⚠️  Installing click dependency...${NC}"
+    echo -e "${YELLOW}WARNING: Installing click dependency...${NC}"
     cd "$PROJECT_ROOT"
     poetry add --group dev click
 fi
 
 # Run the complexity monitor
-echo -e "${BLUE}🔍 Running complexity monitoring...${NC}"
+echo -e "${BLUE}Running complexity monitoring...${NC}"
 cd "$PROJECT_ROOT"
 
 # Capture exit code
@@ -132,9 +132,9 @@ set -e
 
 # Provide feedback based on result
 if [ $EXIT_CODE -eq 0 ]; then
-    echo -e "${GREEN}✅ Complexity check passed!${NC}"
+    echo -e "${GREEN}PASSED: Complexity check passed!${NC}"
 else
-    echo -e "${YELLOW}⚠️  Complexity violations found. Consider refactoring.${NC}"
+    echo -e "${YELLOW}WARNING: Complexity violations found. Consider refactoring.${NC}"
 fi
 
 # Exit with the same code as the monitor

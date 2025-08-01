@@ -99,7 +99,7 @@ jobs:
             fs.readFileSync(path.join(reportsDir, files[0]), 'utf8')
           );
 
-          let comment = '## 🔍 Complexity Monitoring Report\n\n';
+          let comment = '## Complexity Monitoring Report\n\n';
           comment += `**Threshold:** ${latestReport.complexity_distribution ? '10' : 'N/A'}\n`;
           comment += `**Total Violations:** ${latestReport.total_violations}\n`;
 
@@ -107,21 +107,21 @@ jobs:
             comment += `**Average Complexity:** ${latestReport.average_complexity}\n`;
             comment += `**Maximum Complexity:** ${latestReport.max_complexity}\n\n`;
 
-            comment += '### 📊 Complexity Distribution\n';
+            comment += '### Complexity Distribution\n';
             for (const [category, count] of Object.entries(latestReport.complexity_distribution)) {
               comment += `- ${category}: ${count}\n`;
             }
 
-            comment += '\n### 🔥 Top Complex Functions\n';
+            comment += '\n### Top Complex Functions\n';
             const topFunctions = latestReport.high_complexity_functions.slice(0, 5);
             for (let i = 0; i < topFunctions.length; i++) {
               const func = topFunctions[i];
               comment += `${i + 1}. \`${func.file}:${func.line}\` - ${func.function} (${func.complexity})\n`;
             }
 
-            comment += '\n> ⚠️ Consider refactoring functions with complexity > 15 for better maintainability.';
+            comment += '\n> **Warning:** Consider refactoring functions with complexity > 15 for better maintainability.';
           } else {
-            comment += '\n✅ **Excellent!** No complexity violations found.';
+            comment += '\n**Excellent!** No complexity violations found.';
           }
 
           try {
@@ -131,16 +131,16 @@ jobs:
               repo: context.repo.repo,
               body: comment
             });
-            console.log('✅ Successfully posted complexity report comment');
+            console.log('SUCCESS: Successfully posted complexity report comment');
           } catch (error) {
-            console.log('⚠️ Failed to post PR comment (permissions issue):', error.message);
-            console.log('📊 Complexity report is still available in workflow artifacts');
+            console.log('WARNING: Failed to post PR comment (permissions issue):', error.message);
+            console.log('INFO: Complexity report is still available in workflow artifacts');
           }
 
     - name: Output complexity report to workflow log
       if: always()
       run: |
-        echo "📊 COMPLEXITY MONITORING SUMMARY"
+        echo "COMPLEXITY MONITORING SUMMARY"
         echo "================================="
         if [ -d "reports/complexity" ] && [ "$(ls -A reports/complexity)" ]; then
           echo "Latest complexity report:"
@@ -157,8 +157,8 @@ jobs:
     - name: Set complexity check status
       run: |
         if [ "${{ steps.complexity-check.outcome }}" = "failure" ]; then
-          echo "❌ Complexity check failed - violations found"
+          echo "FAILED: Complexity check failed - violations found"
           exit 1
         else
-          echo "✅ Complexity check passed"
+          echo "PASSED: Complexity check passed"
         fi
