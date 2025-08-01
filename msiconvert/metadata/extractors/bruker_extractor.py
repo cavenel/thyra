@@ -66,13 +66,23 @@ class BrukerMetadataExtractor(MetadataExtractor):
             if not frame_result:
                 raise ValueError("No data found in MaldiFrameInfo table")
 
-            min_x_raw, max_x_raw, min_y_raw, max_y_raw, frame_count = frame_result
+            min_x_raw, max_x_raw, min_y_raw, max_y_raw, frame_count = (
+                frame_result
+            )
 
             # Extract imaging area bounds for normalization
-            imaging_min_x = bounds_data.get("ImagingAreaMinXIndexPos", min_x_raw or 0)
-            imaging_max_x = bounds_data.get("ImagingAreaMaxXIndexPos", max_x_raw or 0)
-            imaging_min_y = bounds_data.get("ImagingAreaMinYIndexPos", min_y_raw or 0)
-            imaging_max_y = bounds_data.get("ImagingAreaMaxYIndexPos", max_y_raw or 0)
+            imaging_min_x = bounds_data.get(
+                "ImagingAreaMinXIndexPos", min_x_raw or 0
+            )
+            imaging_max_x = bounds_data.get(
+                "ImagingAreaMaxXIndexPos", max_x_raw or 0
+            )
+            imaging_min_y = bounds_data.get(
+                "ImagingAreaMinYIndexPos", min_y_raw or 0
+            )
+            imaging_max_y = bounds_data.get(
+                "ImagingAreaMaxYIndexPos", max_y_raw or 0
+            )
 
             # Store imaging area offsets for coordinate normalization
             imaging_area_offsets = (int(imaging_min_x), int(imaging_min_y), 0)
@@ -152,7 +162,9 @@ class BrukerMetadataExtractor(MetadataExtractor):
                 f"Failed to extract essential metadata from Bruker database: {e}"
             )
         except Exception as e:
-            logger.error(f"Unexpected error extracting essential metadata: {e}")
+            logger.error(
+                f"Unexpected error extracting essential metadata: {e}"
+            )
             raise
 
     def _extract_comprehensive_impl(self) -> ComprehensiveMetadata:
@@ -196,15 +208,21 @@ class BrukerMetadataExtractor(MetadataExtractor):
         # - mz + intensity arrays
         avg_peaks_per_frame = 2000
         bytes_per_value = 8
-        estimated_bytes = frame_count * avg_peaks_per_frame * 2 * bytes_per_value
+        estimated_bytes = (
+            frame_count * avg_peaks_per_frame * 2 * bytes_per_value
+        )
 
         return estimated_bytes / (1024**3)  # Convert to GB
 
     def _extract_bruker_specific(self) -> Dict[str, Any]:
         """Extract Bruker format-specific metadata."""
         format_specific = {
-            "bruker_format": "bruker_tdf" if self._is_tdf_format() else "bruker_tsf",
-            "data_format": "bruker_tdf" if self._is_tdf_format() else "bruker_tsf",
+            "bruker_format": (
+                "bruker_tdf" if self._is_tdf_format() else "bruker_tsf"
+            ),
+            "data_format": (
+                "bruker_tdf" if self._is_tdf_format() else "bruker_tsf"
+            ),
             "data_path": str(self.data_path),
             "database_path": str(self.data_path / "analysis.tsf"),
             "is_maldi": self._is_maldi_dataset(),
@@ -212,9 +230,13 @@ class BrukerMetadataExtractor(MetadataExtractor):
 
         # Add file type detection
         if (self.data_path / "analysis.tdf").exists():
-            format_specific["binary_file"] = str(self.data_path / "analysis.tdf")
+            format_specific["binary_file"] = str(
+                self.data_path / "analysis.tdf"
+            )
         elif (self.data_path / "analysis.tsf").exists():
-            format_specific["binary_file"] = str(self.data_path / "analysis.tsf")
+            format_specific["binary_file"] = str(
+                self.data_path / "analysis.tsf"
+            )
 
         return format_specific
 

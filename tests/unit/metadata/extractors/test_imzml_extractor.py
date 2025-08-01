@@ -4,7 +4,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from msiconvert.metadata.extractors.imzml_extractor import ImzMLMetadataExtractor
+from msiconvert.metadata.extractors.imzml_extractor import (
+    ImzMLMetadataExtractor,
+)
 
 
 class TestImzMLMetadataExtractor:
@@ -55,7 +57,9 @@ class TestImzMLMetadataExtractor:
         mock_parser = self.create_mock_parser()
         mock_imzml_parser_class.return_value = mock_parser
 
-        extractor = ImzMLMetadataExtractor(mock_parser, Path("/test/path.imzML"))
+        extractor = ImzMLMetadataExtractor(
+            mock_parser, Path("/test/path.imzML")
+        )
         assert extractor.data_source is mock_parser
         assert extractor.imzml_path == Path("/test/path.imzML")
 
@@ -65,11 +69,18 @@ class TestImzMLMetadataExtractor:
         mock_parser = self.create_mock_parser()
         mock_imzml_parser_class.return_value = mock_parser
 
-        extractor = ImzMLMetadataExtractor(mock_parser, Path("/test/path.imzML"))
+        extractor = ImzMLMetadataExtractor(
+            mock_parser, Path("/test/path.imzML")
+        )
         essential = extractor.get_essential()
 
         assert essential.dimensions == (2, 2, 1)  # 2x2 grid, 1 z-slice
-        assert essential.coordinate_bounds == (1, 2, 1, 2)  # min_x, max_x, min_y, max_y
+        assert essential.coordinate_bounds == (
+            1,
+            2,
+            1,
+            2,
+        )  # min_x, max_x, min_y, max_y
         assert essential.mass_range == (100.0, 300.0)  # Full m/z range
         assert essential.n_spectra == 4
         assert essential.source_path == str(Path("/test/path.imzML"))
@@ -100,7 +111,9 @@ class TestImzMLMetadataExtractor:
 
         mock_imzml_parser_class.return_value = mock_parser
 
-        extractor = ImzMLMetadataExtractor(mock_parser, Path("/test/path.imzML"))
+        extractor = ImzMLMetadataExtractor(
+            mock_parser, Path("/test/path.imzML")
+        )
         essential = extractor.get_essential()
 
         assert essential.pixel_size == (25.0, 25.0)
@@ -112,7 +125,9 @@ class TestImzMLMetadataExtractor:
         mock_parser.metadata.find.return_value = []  # No pixel size metadata
         mock_imzml_parser_class.return_value = mock_parser
 
-        extractor = ImzMLMetadataExtractor(mock_parser, Path("/test/path.imzML"))
+        extractor = ImzMLMetadataExtractor(
+            mock_parser, Path("/test/path.imzML")
+        )
         essential = extractor.get_essential()
 
         assert essential.pixel_size is None
@@ -133,7 +148,9 @@ class TestImzMLMetadataExtractor:
         mock_parser = self.create_mock_parser(coordinates=coordinates_3d)
         mock_imzml_parser_class.return_value = mock_parser
 
-        extractor = ImzMLMetadataExtractor(mock_parser, Path("/test/path.imzML"))
+        extractor = ImzMLMetadataExtractor(
+            mock_parser, Path("/test/path.imzML")
+        )
         essential = extractor.get_essential()
 
         assert essential.dimensions == (2, 2, 2)  # 2x2x2 grid
@@ -156,7 +173,9 @@ class TestImzMLMetadataExtractor:
 
         mock_imzml_parser_class.return_value = mock_parser
 
-        extractor = ImzMLMetadataExtractor(mock_parser, Path("/test/path.imzML"))
+        extractor = ImzMLMetadataExtractor(
+            mock_parser, Path("/test/path.imzML")
+        )
         comprehensive = extractor.get_comprehensive()
 
         # Check that essential metadata is included
@@ -183,7 +202,9 @@ class TestImzMLMetadataExtractor:
         mock_parser = self.create_mock_parser(mzs_list=mzs_varied)
         mock_imzml_parser_class.return_value = mock_parser
 
-        extractor = ImzMLMetadataExtractor(mock_parser, Path("/test/path.imzML"))
+        extractor = ImzMLMetadataExtractor(
+            mock_parser, Path("/test/path.imzML")
+        )
         essential = extractor.get_essential()
 
         assert essential.mass_range == (50.0, 400.0)
@@ -207,7 +228,9 @@ class TestImzMLMetadataExtractor:
         )
         mock_imzml_parser_class.return_value = mock_parser
 
-        extractor = ImzMLMetadataExtractor(mock_parser, Path("/test/path.imzML"))
+        extractor = ImzMLMetadataExtractor(
+            mock_parser, Path("/test/path.imzML")
+        )
         essential = extractor.get_essential()
 
         # Should estimate some reasonable memory usage
@@ -222,7 +245,9 @@ class TestImzMLMetadataExtractor:
         mock_parser = self.create_mock_parser(coordinates=custom_coordinates)
         mock_imzml_parser_class.return_value = mock_parser
 
-        extractor = ImzMLMetadataExtractor(mock_parser, Path("/test/path.imzML"))
+        extractor = ImzMLMetadataExtractor(
+            mock_parser, Path("/test/path.imzML")
+        )
         essential = extractor.get_essential()
 
         assert essential.coordinate_bounds == (
@@ -238,7 +263,9 @@ class TestImzMLMetadataExtractor:
         mock_parser = self.create_mock_parser()
         mock_imzml_parser_class.return_value = mock_parser
 
-        extractor = ImzMLMetadataExtractor(mock_parser, Path("/test/path.imzML"))
+        extractor = ImzMLMetadataExtractor(
+            mock_parser, Path("/test/path.imzML")
+        )
 
         # First call
         essential1 = extractor.get_essential()
@@ -255,7 +282,9 @@ class TestImzMLMetadataExtractor:
         mock_parser.coordinates = None  # This will cause an error
         mock_imzml_parser_class.return_value = mock_parser
 
-        extractor = ImzMLMetadataExtractor(mock_parser, Path("/test/path.imzML"))
+        extractor = ImzMLMetadataExtractor(
+            mock_parser, Path("/test/path.imzML")
+        )
 
         with pytest.raises(Exception):
             extractor.get_essential()
@@ -268,7 +297,9 @@ class TestImzMLMetadataExtractor:
         )
         mock_imzml_parser_class.return_value = mock_parser
 
-        extractor = ImzMLMetadataExtractor(mock_parser, Path("/test/path.imzML"))
+        extractor = ImzMLMetadataExtractor(
+            mock_parser, Path("/test/path.imzML")
+        )
 
         with pytest.raises((ValueError, IndexError)):
             extractor.get_essential()
@@ -287,7 +318,9 @@ class TestImzMLMetadataExtractor:
         )
         mock_imzml_parser_class.return_value = mock_parser
 
-        extractor = ImzMLMetadataExtractor(mock_parser, Path("/test/path.imzML"))
+        extractor = ImzMLMetadataExtractor(
+            mock_parser, Path("/test/path.imzML")
+        )
         essential = extractor.get_essential()
 
         assert essential.dimensions == (1, 1, 1)

@@ -5,7 +5,9 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from msiconvert.metadata.extractors.bruker_extractor import BrukerMetadataExtractor
+from msiconvert.metadata.extractors.bruker_extractor import (
+    BrukerMetadataExtractor,
+)
 
 
 class TestBrukerMetadataExtractor:
@@ -53,7 +55,9 @@ class TestBrukerMetadataExtractor:
                     return (100.0, 10.0, 25.0, 25.0, 50.0)
                 elif "BeamScanSizeX, BeamScanSizeY, SpotSize" in query:
                     # Laser info query - return beam_x, beam_y, spot_size
-                    laser_result = sample_data.get("laser_info", (25.0, 25.0, 1.0))
+                    laser_result = sample_data.get(
+                        "laser_info", (25.0, 25.0, 1.0)
+                    )
                     return laser_result
                 elif "MIN(XIndexPos)" in query and "COUNT(*)" in query:
                     # Frame info query - return min_x, max_x, min_y, max_y, frame_count
@@ -113,7 +117,11 @@ class TestBrukerMetadataExtractor:
         extractor = BrukerMetadataExtractor(mock_conn, data_path)
         essential = extractor.get_essential()
 
-        assert essential.dimensions == (3, 5, 1)  # Calculated from coordinate bounds
+        assert essential.dimensions == (
+            3,
+            5,
+            1,
+        )  # Calculated from coordinate bounds
         assert essential.coordinate_bounds == (0, 2, 0, 4)
         assert essential.mass_range == (100.0, 1000.0)
         assert essential.pixel_size == (25.0, 25.0)
@@ -299,7 +307,9 @@ class TestBrukerMetadataExtractor:
         mock_conn = Mock(spec=sqlite3.Connection)
         mock_cursor = Mock()
         mock_conn.cursor.return_value = mock_cursor
-        mock_cursor.execute.side_effect = sqlite3.Error("Database query failed")
+        mock_cursor.execute.side_effect = sqlite3.Error(
+            "Database query failed"
+        )
 
         data_path = Path("/test/data.d")
         extractor = BrukerMetadataExtractor(mock_conn, data_path)
@@ -433,7 +443,9 @@ class TestBrukerMetadataExtractor:
     def test_sql_injection_protection(self):
         """Test that the extractor is protected against SQL injection."""
         mock_conn = self.create_mock_connection()
-        data_path = Path("/test'; DROP TABLE MaldiFrameLaserInfo; --")  # Malicious path
+        data_path = Path(
+            "/test'; DROP TABLE MaldiFrameLaserInfo; --"
+        )  # Malicious path
 
         # Should not raise an exception, path is just used as a string
         extractor = BrukerMetadataExtractor(mock_conn, data_path)

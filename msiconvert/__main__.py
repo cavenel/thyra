@@ -22,7 +22,9 @@ def main():
         help="Output format type: spatialdata (full SpatialData format)",
     )
     parser.add_argument(
-        "--dataset-id", default="msi_dataset", help="Identifier for the dataset"
+        "--dataset-id",
+        default="msi_dataset",
+        help="Identifier for the dataset",
     )
     parser.add_argument(
         "--pixel-size",
@@ -47,13 +49,17 @@ def main():
         default="INFO",
         help="Set the logging level",
     )
-    parser.add_argument("--log-file", default=None, help="Path to the log file")
+    parser.add_argument(
+        "--log-file", default=None, help="Path to the log file"
+    )
 
     args = parser.parse_args()
 
     # Input validation - check early to give better error messages
     if args.pixel_size is not None and args.pixel_size <= 0:
-        parser.error("Pixel size must be positive (got: {})".format(args.pixel_size))
+        parser.error(
+            "Pixel size must be positive (got: {})".format(args.pixel_size)
+        )
 
     if not args.dataset_id.strip():
         parser.error("Dataset ID cannot be empty")
@@ -85,7 +91,9 @@ def main():
         parser.error(f"Output path already exists: {output_path}")
 
     # Configure logging
-    setup_logging(log_level=getattr(logging, args.log_level), log_file=args.log_file)
+    setup_logging(
+        log_level=getattr(logging, args.log_level), log_file=args.log_file
+    )
 
     # Pixel size handling moved entirely to convert.py
     final_pixel_size = args.pixel_size  # Can be None

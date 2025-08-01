@@ -82,7 +82,9 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
 
         # Validate inputs
         if pixel_size_um <= 0:
-            raise ValueError(f"pixel_size_um must be positive, got {pixel_size_um}")
+            raise ValueError(
+                f"pixel_size_um must be positive, got {pixel_size_um}"
+            )
         if not dataset_id.strip():
             raise ValueError("dataset_id cannot be empty")
 
@@ -92,7 +94,9 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             pixel_size_detection_info is None
             and "pixel_size_detection_info" in kwargs_filtered
         ):
-            pixel_size_detection_info = kwargs_filtered.pop("pixel_size_detection_info")
+            pixel_size_detection_info = kwargs_filtered.pop(
+                "pixel_size_detection_info"
+            )
 
         super().__init__(
             reader,
@@ -161,7 +165,9 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
                             "region": f"{self.dataset_id}_pixels",
                             "spatial_x": x * self.pixel_size_um,
                             "spatial_y": y * self.pixel_size_um,
-                            "spatial_z": z * self.pixel_size_um if n_z > 1 else 0.0,
+                            "spatial_z": (
+                                z * self.pixel_size_um if n_z > 1 else 0.0
+                            ),
                         }
                     )
                     pixel_idx += 1
@@ -298,7 +304,9 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
 
             # Write to disk
             sdata.write(str(self.output_path))
-            logging.info(f"Successfully saved SpatialData to {self.output_path}")
+            logging.info(
+                f"Successfully saved SpatialData to {self.output_path}"
+            )
             return True
         except Exception as e:
             logging.error(f"Error saving SpatialData: {e}")
@@ -405,7 +413,9 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
 
             # Add pixel size detection provenance if available
             if self._pixel_size_detection_info is not None:
-                metadata_dict["pixel_size_provenance"] = self._pixel_size_detection_info
+                metadata_dict["pixel_size_provenance"] = (
+                    self._pixel_size_detection_info
+                )
 
             # Add conversion options used
             metadata_dict["conversion_options"] = {

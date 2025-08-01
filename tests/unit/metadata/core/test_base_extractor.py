@@ -1,6 +1,4 @@
 # tests/unit/metadata/core/test_base_extractor.py
-from unittest.mock import Mock, patch
-
 import pytest
 
 from msiconvert.core.base_extractor import MetadataExtractor

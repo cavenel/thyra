@@ -92,7 +92,9 @@ class BatchProcessor:
             batch_size = self.max_batch_size
 
         # Apply bounds
-        batch_size = max(self.min_batch_size, min(batch_size, self.max_batch_size))
+        batch_size = max(
+            self.min_batch_size, min(batch_size, self.max_batch_size)
+        )
         batch_size = min(batch_size, total_items)
 
         logger.debug(
@@ -118,7 +120,8 @@ class BatchProcessor:
         if batch_size is None:
             # Use a reasonable default if no size provided
             batch_size = min(
-                self.max_batch_size, max(self.min_batch_size, total_items // 10)
+                self.max_batch_size,
+                max(self.min_batch_size, total_items // 10),
             )
 
         batches = []
@@ -192,7 +195,10 @@ class BatchProcessor:
                 spectrum_count += 1
 
                 # Check if batch is complete
-                if len(current_batch) >= batch_size or spectrum_count >= total_spectra:
+                if (
+                    len(current_batch) >= batch_size
+                    or spectrum_count >= total_spectra
+                ):
                     # Process the batch
                     if current_batch_idx < len(batches):
                         batch_info = batches[current_batch_idx]
@@ -235,7 +241,8 @@ class BatchProcessor:
         # Update final statistics
         if self._stats["total_batches"] > 0:
             self._stats["average_batch_size"] = (
-                self._stats["total_items_processed"] / self._stats["total_batches"]
+                self._stats["total_items_processed"]
+                / self._stats["total_batches"]
             )
 
     def adaptive_batch_processing(
@@ -281,7 +288,10 @@ class BatchProcessor:
                 spectrum_count += 1
 
                 # Process batch when it reaches target size
-                if len(current_batch) >= batch_size or spectrum_count >= total_spectra:
+                if (
+                    len(current_batch) >= batch_size
+                    or spectrum_count >= total_spectra
+                ):
                     # Time the batch processing
                     start_time = time.time()
 
@@ -305,10 +315,18 @@ class BatchProcessor:
                         avg_time = np.mean(batch_times[-3:])
 
                         # Adjust batch size based on performance
-                        if avg_time < 0.5:  # Fast processing, increase batch size
-                            batch_size = min(batch_size + 10, self.max_batch_size)
-                        elif avg_time > 2.0:  # Slow processing, decrease batch size
-                            batch_size = max(batch_size - 10, self.min_batch_size)
+                        if (
+                            avg_time < 0.5
+                        ):  # Fast processing, increase batch size
+                            batch_size = min(
+                                batch_size + 10, self.max_batch_size
+                            )
+                        elif (
+                            avg_time > 2.0
+                        ):  # Slow processing, decrease batch size
+                            batch_size = max(
+                                batch_size - 10, self.min_batch_size
+                            )
 
                         logger.debug(
                             f"Adjusted batch size to {batch_size} "
@@ -332,7 +350,10 @@ class BatchProcessor:
             pbar.close()
 
     def process_with_memory_monitoring(
-        self, items: List[Any], processor_func: Callable, memory_limit_mb: float = None
+        self,
+        items: List[Any],
+        processor_func: Callable,
+        memory_limit_mb: float = None,
     ) -> Iterator[Any]:
         """
         Process items with memory monitoring and adaptive batch sizing.

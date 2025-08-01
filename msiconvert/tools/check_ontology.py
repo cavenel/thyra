@@ -10,10 +10,14 @@ from ..metadata.ontology.cache import ONTOLOGY
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Check ontology terms in imzML files")
+    parser = argparse.ArgumentParser(
+        description="Check ontology terms in imzML files"
+    )
     parser.add_argument("input", help="imzML file or directory to check")
     parser.add_argument("--output", help="Save results to JSON file")
-    parser.add_argument("--verbose", action="store_true", help="Verbose output")
+    parser.add_argument(
+        "--verbose", action="store_true", help="Verbose output"
+    )
 
     args = parser.parse_args()
 
@@ -51,7 +55,9 @@ def main():
     else:
         results = validator.validate_directory(input_path)
         print(f"Checked {results['files_checked']} files")
-        print(f"Found {len(results['all_unknown_terms'])} unique unknown terms")
+        print(
+            f"Found {len(results['all_unknown_terms'])} unique unknown terms"
+        )
 
         if results["all_unknown_terms"]:
             print("\nMost common unknown terms:")

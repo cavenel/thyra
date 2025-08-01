@@ -6,7 +6,10 @@ from typing import Any, Dict, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
-from .base_spatialdata_converter import SPATIALDATA_AVAILABLE, BaseSpatialDataConverter
+from .base_spatialdata_converter import (
+    SPATIALDATA_AVAILABLE,
+    BaseSpatialDataConverter,
+)
 
 if SPATIALDATA_AVAILABLE:
     import xarray as xr
@@ -51,7 +54,9 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
             "shapes": shapes,
             "images": images,
             "tic_values": np.zeros((n_y, n_x, n_z), dtype=np.float64),
-            "total_intensity": np.zeros(len(self._common_mass_axis), dtype=np.float64),
+            "total_intensity": np.zeros(
+                len(self._common_mass_axis), dtype=np.float64
+            ),
             "pixel_count": 0,
         }
 
@@ -110,7 +115,9 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
             self._non_empty_pixel_count = data_structures["pixel_count"]
 
             # Convert to CSR format for efficiency
-            data_structures["sparse_data"] = data_structures["sparse_data"].tocsr()
+            data_structures["sparse_data"] = data_structures[
+                "sparse_data"
+            ].tocsr()
 
             # Create AnnData
             adata = AnnData(
@@ -172,7 +179,9 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
             z_size, y_size, x_size = tic_values.shape
 
             # Add channel dimension for 3D image
-            tic_values_with_channel = tic_values.reshape(1, z_size, y_size, x_size)
+            tic_values_with_channel = tic_values.reshape(
+                1, z_size, y_size, x_size
+            )
 
             tic_image = xr.DataArray(
                 tic_values_with_channel,
@@ -201,15 +210,19 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
                 )
             except (ImportError, AttributeError):
                 # Fallback if Image3DModel is not available
-                logging.warning("Image3DModel not available, using generic image model")
+                logging.warning(
+                    "Image3DModel not available, using generic image model"
+                )
                 from spatialdata.models import ImageModel
 
-                data_structures["images"][f"{self.dataset_id}_tic"] = ImageModel.parse(
-                    tic_image,
-                    transformations={
-                        self.dataset_id: transform,
-                        "global": transform,
-                    },
+                data_structures["images"][f"{self.dataset_id}_tic"] = (
+                    ImageModel.parse(
+                        tic_image,
+                        transformations={
+                            self.dataset_id: transform,
+                            "global": transform,
+                        },
+                    )
                 )
         else:
             # Single 2D slice
@@ -236,10 +249,12 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
 
             # Create Image2DModel for the TIC image
             transform = Identity()
-            data_structures["images"][f"{self.dataset_id}_tic"] = Image2DModel.parse(
-                tic_image,
-                transformations={
-                    self.dataset_id: transform,
-                    "global": transform,
-                },
+            data_structures["images"][f"{self.dataset_id}_tic"] = (
+                Image2DModel.parse(
+                    tic_image,
+                    transformations={
+                        self.dataset_id: transform,
+                        "global": transform,
+                    },
+                )
             )

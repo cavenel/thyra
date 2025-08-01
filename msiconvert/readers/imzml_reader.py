@@ -60,7 +60,9 @@ class ImzMLReader(BaseMSIReader):
         """Guarantee parser is initialized exactly once."""
         if not self._parser_initialized:
             if self.filepath is None:
-                raise ValueError("No file path provided for parser initialization")
+                raise ValueError(
+                    "No file path provided for parser initialization"
+                )
             self._initialize_parser(self.filepath)
             self._parser_initialized = True
 
@@ -82,7 +84,9 @@ class ImzMLReader(BaseMSIReader):
         self.ibd_path = imzml_path.with_suffix(".ibd")
 
         if not self.ibd_path.exists():
-            raise ValueError(f"Corresponding .ibd file not found for {imzml_path}")
+            raise ValueError(
+                f"Corresponding .ibd file not found for {imzml_path}"
+            )
 
         # Open the .ibd file for reading
         self.ibd_file = open(self.ibd_path, mode="rb")
@@ -91,7 +95,9 @@ class ImzMLReader(BaseMSIReader):
         logging.info(f"Initializing ImzML parser for {imzml_path}")
         try:
             self.parser = ImzMLParser(
-                filename=str(imzml_path), parse_lib="lxml", ibd_file=self.ibd_file
+                filename=str(imzml_path),
+                parse_lib="lxml",
+                ibd_file=self.ibd_file,
             )
         except Exception as e:
             if self.ibd_file:
@@ -133,7 +139,11 @@ class ImzMLReader(BaseMSIReader):
         self._coordinates_cache = {}
 
         for idx, (x, y, z) in enumerate(self.parser.coordinates):  # type: ignore
-            self._coordinates_cache[idx] = (x - 1, y - 1, z - 1 if z > 0 else 0)
+            self._coordinates_cache[idx] = (
+                x - 1,
+                y - 1,
+                z - 1 if z > 0 else 0,
+            )
 
         logging.info(f"Cached {len(self._coordinates_cache)} coordinates")
 
@@ -166,7 +176,9 @@ class ImzMLReader(BaseMSIReader):
             parser = cast(ImzMLParser, self.parser)
 
             if self.is_continuous:
-                logging.info("Using m/z values from first spectrum (continuous mode)")
+                logging.info(
+                    "Using m/z values from first spectrum (continuous mode)"
+                )
                 spectrum_data = parser.getspectrum(0)  # type: ignore
                 if spectrum_data is None or len(spectrum_data) < 1:  # type: ignore
                     raise ValueError("Could not get first spectrum")
@@ -201,12 +213,16 @@ class ImzMLReader(BaseMSIReader):
                             if mzs.size > 0:
                                 all_mzs.append(mzs)
                         except Exception as e:
-                            logging.warning(f"Error getting spectrum {idx}: {e}")
+                            logging.warning(
+                                f"Error getting spectrum {idx}: {e}"
+                            )
                         pbar.update(1)
 
                 if not all_mzs:
                     # No spectra found - raise exception instead of returning empty array
-                    raise ValueError("No spectra found to build common mass axis")
+                    raise ValueError(
+                        "No spectra found to build common mass axis"
+                    )
 
                 try:
                     combined_mzs = np.concatenate(all_mzs)
@@ -222,7 +238,9 @@ class ImzMLReader(BaseMSIReader):
                     )
                 except Exception as e:
                     # Re-raise with more context
-                    raise ValueError(f"Error creating common mass axis: {e}") from e
+                    raise ValueError(
+                        f"Error creating common mass axis: {e}"
+                    ) from e
 
         # Return the common mass axis
         return self._common_mass_axis
@@ -297,7 +315,9 @@ class ImzMLReader(BaseMSIReader):
 
                         pbar.update(1)
                     except Exception as e:
-                        logging.warning(f"Error processing spectrum {idx}: {e}")
+                        logging.warning(
+                            f"Error processing spectrum {idx}: {e}"
+                        )
                         pbar.update(1)
             else:
                 # Process in batches
@@ -327,7 +347,9 @@ class ImzMLReader(BaseMSIReader):
 
                             pbar.update(1)
                         except Exception as e:
-                            logging.warning(f"Error processing spectrum {idx}: {e}")
+                            logging.warning(
+                                f"Error processing spectrum {idx}: {e}"
+                            )
                             pbar.update(1)
 
     def read(self) -> Dict[str, Any]:

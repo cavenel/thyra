@@ -13,7 +13,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
-import pytest
 
 from msiconvert.readers.bruker.bruker_reader import BrukerReader
 
@@ -89,8 +88,12 @@ class TestBrukerReader:
 
             # Mock _iter_spectra_raw to return test data
             def mock_iter_spectra():
-                yield (0, 0, 0), np.array([100.0, 200.0]), np.array([10.0, 20.0])
-                yield (0, 0, 1), np.array([150.0, 250.0]), np.array([15.0, 25.0])
+                yield (0, 0, 0), np.array([100.0, 200.0]), np.array(
+                    [10.0, 20.0]
+                )
+                yield (0, 0, 1), np.array([150.0, 250.0]), np.array(
+                    [15.0, 25.0]
+                )
 
             reader._iter_spectra_raw = mock_iter_spectra
             reader._get_frame_count = lambda: 2
@@ -158,7 +161,9 @@ class TestRawMassAxisBuilder:
 
         from msiconvert.readers.bruker.bruker_reader import build_raw_mass_axis
 
-        mass_axis = build_raw_mass_axis(mock_spectra_iterator(), progress_callback)
+        mass_axis = build_raw_mass_axis(
+            mock_spectra_iterator(), progress_callback
+        )
 
         # Should have called progress callback
         assert len(progress_calls) > 0
@@ -171,7 +176,9 @@ class TestDirectCoordinateExtraction:
 
     def test_get_frame_coordinates_maldi_with_offsets(self):
         """Test direct coordinate extraction for MALDI data with normalization."""
-        from msiconvert.readers.bruker.bruker_reader import _get_frame_coordinates
+        from msiconvert.readers.bruker.bruker_reader import (
+            _get_frame_coordinates,
+        )
 
         # Mock database with MALDI data
         with patch("sqlite3.connect") as mock_connect:
@@ -181,7 +188,10 @@ class TestDirectCoordinateExtraction:
             mock_conn.cursor.return_value = mock_cursor
 
             # Mock MALDI coordinate query
-            mock_cursor.fetchone.return_value = (15, 25)  # X=15, Y=25 for frame
+            mock_cursor.fetchone.return_value = (
+                15,
+                25,
+            )  # X=15, Y=25 for frame
 
             db_path = Path("/fake/analysis.tsf")
             coordinate_offsets = (5, 15, 0)  # Offsets from metadata
@@ -192,7 +202,9 @@ class TestDirectCoordinateExtraction:
 
     def test_get_frame_coordinates_maldi_without_offsets(self):
         """Test direct coordinate extraction for MALDI data without normalization."""
-        from msiconvert.readers.bruker.bruker_reader import _get_frame_coordinates
+        from msiconvert.readers.bruker.bruker_reader import (
+            _get_frame_coordinates,
+        )
 
         # Mock database with MALDI data
         with patch("sqlite3.connect") as mock_connect:
@@ -202,7 +214,10 @@ class TestDirectCoordinateExtraction:
             mock_conn.cursor.return_value = mock_cursor
 
             # Mock MALDI coordinate query
-            mock_cursor.fetchone.return_value = (15, 25)  # X=15, Y=25 for frame
+            mock_cursor.fetchone.return_value = (
+                15,
+                25,
+            )  # X=15, Y=25 for frame
 
             db_path = Path("/fake/analysis.tsf")
             coords = _get_frame_coordinates(db_path, 1)  # No offsets provided
@@ -212,7 +227,9 @@ class TestDirectCoordinateExtraction:
 
     def test_get_frame_coordinates_non_maldi(self):
         """Test direct coordinate extraction for non-MALDI data."""
-        from msiconvert.readers.bruker.bruker_reader import _get_frame_coordinates
+        from msiconvert.readers.bruker.bruker_reader import (
+            _get_frame_coordinates,
+        )
 
         # Mock database without MALDI data
         with patch("sqlite3.connect") as mock_connect:
@@ -249,7 +266,9 @@ class TestDirectCoordinateExtraction:
             count = _get_frame_count(db_path)
 
             assert count == 100
-            mock_cursor.execute.assert_called_with("SELECT COUNT(*) FROM Frames")
+            mock_cursor.execute.assert_called_with(
+                "SELECT COUNT(*) FROM Frames"
+            )
 
 
 class TestReaderInterface:
@@ -264,7 +283,9 @@ class TestReaderInterface:
 
     @patch("msiconvert.readers.bruker.bruker_reader.DLLManager")
     @patch("msiconvert.readers.bruker.bruker_reader.SDKFunctions")
-    def test_required_methods_exist(self, mock_sdk_functions, mock_dll_manager):
+    def test_required_methods_exist(
+        self, mock_sdk_functions, mock_dll_manager
+    ):
         """Test that all required interface methods exist."""
         mock_data_path = Path("/fake/bruker.d")
 

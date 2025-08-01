@@ -65,7 +65,9 @@ class ImzMLMetadataExtractor(MetadataExtractor):
             raw_metadata=self._extract_raw_metadata(),
         )
 
-    def _calculate_dimensions(self, coords: NDArray[np.int_]) -> Tuple[int, int, int]:
+    def _calculate_dimensions(
+        self, coords: NDArray[np.int_]
+    ) -> Tuple[int, int, int]:
         """Calculate dataset dimensions from coordinates."""
         if len(coords) == 0:
             return (0, 0, 0)
@@ -74,7 +76,11 @@ class ImzMLMetadataExtractor(MetadataExtractor):
         coords_0based = coords - 1
 
         max_coords = np.max(coords_0based, axis=0)
-        return (int(max_coords[0]) + 1, int(max_coords[1]) + 1, int(max_coords[2]) + 1)
+        return (
+            int(max_coords[0]) + 1,
+            int(max_coords[1]) + 1,
+            int(max_coords[2]) + 1,
+        )
 
     def _calculate_bounds(
         self, coords: NDArray[np.int_]
@@ -225,7 +231,9 @@ class ImzMLMetadataExtractor(MetadataExtractor):
             ]
             for key in instrument_keys:
                 if key in self.parser.imzmldict:
-                    instrument[key.replace(" ", "_")] = self.parser.imzmldict[key]
+                    instrument[key.replace(" ", "_")] = self.parser.imzmldict[
+                        key
+                    ]
 
         return instrument
 

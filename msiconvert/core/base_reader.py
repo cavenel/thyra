@@ -108,9 +108,7 @@ class BaseMSIReader(ABC):
         indices = np.clip(indices, 0, len(common_axis) - 1)
 
         # Verify that we're actually finding the right m/z values
-        max_diff = (
-            1e-6  # A very small tolerance threshold for floating point differences
-        )
+        max_diff = 1e-6  # A very small tolerance threshold for floating point differences
         indices_valid = np.abs(common_axis[indices] - mzs) <= max_diff
 
         # Return only the valid indices and their corresponding intensities

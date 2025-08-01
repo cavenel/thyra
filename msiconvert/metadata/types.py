@@ -8,9 +8,13 @@ class EssentialMetadata:
     """Critical metadata for processing decisions and interpolation setup."""
 
     dimensions: Tuple[int, int, int]  # (x, y, z) grid dimensions
-    coordinate_bounds: Tuple[float, float, float, float]  # min_x, max_x, min_y, max_y
+    coordinate_bounds: Tuple[
+        float, float, float, float
+    ]  # min_x, max_x, min_y, max_y
     mass_range: Tuple[float, float]  # (min_mass, max_mass)
-    pixel_size: Optional[Tuple[float, float]]  # (x_size, y_size) in micrometers
+    pixel_size: Optional[
+        Tuple[float, float]
+    ]  # (x_size, y_size) in micrometers
     n_spectra: int  # Total number of spectra
     estimated_memory_gb: float  # Memory usage estimate
     source_path: str  # Path to source data

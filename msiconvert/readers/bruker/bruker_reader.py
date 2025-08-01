@@ -203,13 +203,19 @@ class BrukerReader(BaseMSIReader):
     def _validate_data_path(self) -> None:
         """Validate the data path and check for required files."""
         if not self.data_path.exists():
-            raise FileFormatError(f"Data path does not exist: {self.data_path}")
+            raise FileFormatError(
+                f"Data path does not exist: {self.data_path}"
+            )
 
         if not self.data_path.is_dir():
-            raise FileFormatError(f"Data path must be a directory: {self.data_path}")
+            raise FileFormatError(
+                f"Data path must be a directory: {self.data_path}"
+            )
 
         if not self.data_path.suffix == ".d":
-            raise FileFormatError(f"Expected .d directory, got: {self.data_path}")
+            raise FileFormatError(
+                f"Expected .d directory, got: {self.data_path}"
+            )
 
     def _detect_file_type(self) -> None:
         """Detect whether this is TSF or TDF data."""
@@ -255,7 +261,9 @@ class BrukerReader(BaseMSIReader):
                 str(self.data_path), self.use_recalibrated_state
             )
 
-            logger.info(f"Successfully initialized {self.file_type.upper()} SDK")
+            logger.info(
+                f"Successfully initialized {self.file_type.upper()} SDK"
+            )
 
         except Exception as e:
             logger.error(f"Failed to initialize SDK: {e}")
@@ -312,12 +320,16 @@ class BrukerReader(BaseMSIReader):
             logger.warning("No m/z values found in dataset")
             return np.array([])
 
-        logger.info(f"Built raw mass axis with {len(mass_axis)} unique m/z values")
+        logger.info(
+            f"Built raw mass axis with {len(mass_axis)} unique m/z values"
+        )
         return mass_axis
 
     def iter_spectra(
         self, batch_size: Optional[int] = None
-    ) -> Generator[Tuple[Tuple[int, int, int], np.ndarray, np.ndarray], None, None]:
+    ) -> Generator[
+        Tuple[Tuple[int, int, int], np.ndarray, np.ndarray], None, None
+    ]:
         """
         Iterate through all spectra sequentially.
 
@@ -332,7 +344,9 @@ class BrukerReader(BaseMSIReader):
 
     def _iter_spectra_raw(
         self,
-    ) -> Generator[Tuple[Tuple[int, int, int], np.ndarray, np.ndarray], None, None]:
+    ) -> Generator[
+        Tuple[Tuple[int, int, int], np.ndarray, np.ndarray], None, None
+    ]:
         """Raw spectrum iteration without batching."""
         frame_count = self._get_frame_count()
         coordinate_offsets = self._get_coordinate_offsets()
@@ -351,7 +365,9 @@ class BrukerReader(BaseMSIReader):
                         frame_id, coordinate_offsets
                     )
                     if coords is None:
-                        logger.warning(f"No coordinates found for frame {frame_id}")
+                        logger.warning(
+                            f"No coordinates found for frame {frame_id}"
+                        )
                         pbar.update(1)
                         continue
 
@@ -360,7 +376,9 @@ class BrukerReader(BaseMSIReader):
 
                     # Read spectrum with optimization (or fallback if no hint)
                     mzs, intensities = self.sdk.read_spectrum(
-                        self.handle, frame_id, buffer_size_hint=buffer_size_hint
+                        self.handle,
+                        frame_id,
+                        buffer_size_hint=buffer_size_hint,
                     )
 
                     if mzs.size > 0 and intensities.size > 0:
@@ -373,7 +391,9 @@ class BrukerReader(BaseMSIReader):
                         self.progress_callback(frame_id, frame_count)
 
                 except Exception as e:
-                    logger.warning(f"Error reading spectrum for frame {frame_id}: {e}")
+                    logger.warning(
+                        f"Error reading spectrum for frame {frame_id}: {e}"
+                    )
                     pbar.update(1)
                     continue
 
@@ -393,7 +413,9 @@ class BrukerReader(BaseMSIReader):
         return self._coordinate_offsets
 
     def _get_frame_coordinates_cached(
-        self, frame_id: int, coordinate_offsets: Optional[Tuple[int, int, int]] = None
+        self,
+        frame_id: int,
+        coordinate_offsets: Optional[Tuple[int, int, int]] = None,
     ) -> Optional[Tuple[int, int, int]]:
         """
         Get normalized coordinates for a specific frame using persistent connection.
@@ -433,7 +455,9 @@ class BrukerReader(BaseMSIReader):
             return (frame_id - 1, 0, 0)
 
         except Exception as e:
-            logger.warning(f"Error getting coordinates for frame {frame_id}: {e}")
+            logger.warning(
+                f"Error getting coordinates for frame {frame_id}: {e}"
+            )
             return None
 
     def _preload_frame_num_peaks(self) -> Dict[int, int]:
@@ -470,7 +494,9 @@ class BrukerReader(BaseMSIReader):
                         f"... and {invalid_count - 5} more invalid NumPeaks values"
                     )
 
-                memory_mb = len(num_peaks_cache) * 2 / (1024 * 1024)  # uint16 = 2 bytes
+                memory_mb = (
+                    len(num_peaks_cache) * 2 / (1024 * 1024)
+                )  # uint16 = 2 bytes
                 logger.info(
                     f"Cached NumPeaks for {len(num_peaks_cache)} frames ({memory_mb:.1f}MB)"
                 )

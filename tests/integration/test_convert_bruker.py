@@ -53,7 +53,9 @@ class TestBrukerConversion:
         assert detected_format == "bruker"
 
     @pytest.mark.skipif(
-        not pytest.importorskip("spatialdata", reason="SpatialData not installed"),
+        not pytest.importorskip(
+            "spatialdata", reason="SpatialData not installed"
+        ),
         reason="SpatialData not installed",
     )
     @(
@@ -67,7 +69,7 @@ class TestBrukerConversion:
     ):
         """Test converting Bruker to SpatialData format."""
         # Skip if SpatialData is not available
-        spatialdata = pytest.importorskip("spatialdata")
+        pytest.importorskip("spatialdata")
 
         # Setup DLL mock
         dll_mock = MagicMock()
@@ -118,7 +120,9 @@ class TestBrukerConversion:
         mock_cursor.execute.side_effect = execute_side_effect
 
         # Patch both the BrukerReader initialization and the iter_spectra method
-        with patch("msiconvert.readers.bruker_reader.BrukerReader._preload_metadata"):
+        with patch(
+            "msiconvert.readers.bruker_reader.BrukerReader._preload_metadata"
+        ):
             # Create a mock for the BrukerReader class that will be instantiated
             mock_reader = MagicMock()
             mock_reader.get_common_mass_axis.return_value = np.array(
@@ -184,13 +188,18 @@ class TestBrukerConversion:
         "msiconvert.readers.bruker_reader.BrukerReader._find_dll_path",
         return_value=None,
     )
-    @patch("msiconvert.readers.bruker_reader.BrukerReader.__init__", return_value=None)
+    @patch(
+        "msiconvert.readers.bruker_reader.BrukerReader.__init__",
+        return_value=None,
+    )
     def test_bruker_reader_dll_not_found(
         self, mock_init, mock_find_dll_path, mock_bruker_data_dir
     ):
         """Test that BrukerReader raises RuntimeError if DLL is not found."""
         reader = BrukerReader(mock_bruker_data_dir)
-        with pytest.raises(RuntimeError, match="Bruker DLL/shared library not found"):
+        with pytest.raises(
+            RuntimeError, match="Bruker DLL/shared library not found"
+        ):
             reader._load_dll()
 
     def test_spatialdata_integration(self):
