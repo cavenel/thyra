@@ -8,13 +8,16 @@ import pandas as pd
 from numpy.typing import NDArray
 from scipy import sparse
 
-from .base_spatialdata_converter import BaseSpatialDataConverter, SPATIALDATA_AVAILABLE
+from .base_spatialdata_converter import (
+    SPATIALDATA_AVAILABLE,
+    BaseSpatialDataConverter,
+)
 
 if SPATIALDATA_AVAILABLE:
+    import xarray as xr
     from anndata import AnnData
     from spatialdata.models import Image2DModel, TableModel
     from spatialdata.transformations import Identity
-    import xarray as xr
 
 
 class SpatialData2DConverter(BaseSpatialDataConverter):
@@ -22,7 +25,7 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
 
     def __init__(self, *args, **kwargs):
         """Initialize 2D converter with handle_3d=False."""
-        kwargs['handle_3d'] = False  # Force 2D mode
+        kwargs["handle_3d"] = False  # Force 2D mode
         super().__init__(*args, **kwargs)
 
     def _create_data_structures(self) -> Dict[str, Any]:
@@ -39,7 +42,7 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
 
         if self._dimensions is None:
             raise ValueError("Dimensions are not initialized")
-        
+
         n_x, n_y, n_z = self._dimensions
 
         # Create a structure for each slice
@@ -62,11 +65,15 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
             "shapes": shapes,
             "images": images,
             "var_df": self._create_mass_dataframe(),
-            "total_intensity": np.zeros(len(self._common_mass_axis), dtype=np.float64),
+            "total_intensity": np.zeros(
+                len(self._common_mass_axis), dtype=np.float64
+            ),
             "pixel_count": 0,
         }
 
-    def _create_sparse_matrix_for_slice(self, z_value: int) -> sparse.lil_matrix:
+    def _create_sparse_matrix_for_slice(
+        self, z_value: int
+    ) -> sparse.lil_matrix:
         """
         Create a sparse matrix for a single Z-slice.
 
@@ -86,11 +93,14 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
         n_masses = len(self._common_mass_axis)
 
         logging.info(
-            f"Creating sparse matrix for slice z={z_value} with {n_pixels} pixels and {n_masses} mass values"
+            f"Creating sparse matrix for slice z={z_value} with {n_pixels} pixels and "
+            f"{n_masses} mass values"
         )
         return sparse.lil_matrix((n_pixels, n_masses), dtype=np.float64)
 
-    def _create_coordinates_dataframe_for_slice(self, z_value: int) -> pd.DataFrame:
+    def _create_coordinates_dataframe_for_slice(
+        self, z_value: int
+    ) -> pd.DataFrame:
         """
         Create a coordinates dataframe for a single Z-slice.
 
@@ -105,11 +115,17 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
 
         n_x, n_y, _ = self._dimensions
 
-        # Pre-allocate arrays for better performance 
+        # Pre-allocate arrays for better performance
         pixel_count = n_x * n_y
-        y_values: NDArray[np.int32] = np.repeat(np.arange(n_y, dtype=np.int32), n_x)
-        x_values: NDArray[np.int32] = np.tile(np.arange(n_x, dtype=np.int32), n_y)
-        instance_ids: NDArray[np.int32] = np.arange(pixel_count, dtype=np.int32)
+        y_values: NDArray[np.int32] = np.repeat(
+            np.arange(n_y, dtype=np.int32), n_x
+        )
+        x_values: NDArray[np.int32] = np.tile(
+            np.arange(n_x, dtype=np.int32), n_y
+        )
+        instance_ids: NDArray[np.int32] = np.arange(
+            pixel_count, dtype=np.int32
+        )
 
         # Create DataFrame in one operation
         coords_df = pd.DataFrame(
@@ -187,7 +203,8 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
         # Calculate average mass spectrum
         if data_structures["pixel_count"] > 0:
             avg_spectrum = (
-                data_structures["total_intensity"] / data_structures["pixel_count"]
+                data_structures["total_intensity"]
+                / data_structures["pixel_count"]
             )
         else:
             avg_spectrum = data_structures["total_intensity"].copy()
@@ -229,8 +246,8 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
 
                 # Add to tables and create shapes
                 data_structures["tables"][slice_id] = table
-                data_structures["shapes"][region_key] = self._create_pixel_shapes(
-                    adata, is_3d=False
+                data_structures["shapes"][region_key] = (
+                    self._create_pixel_shapes(adata, is_3d=False)
                 )
 
                 # Create TIC image for this slice
@@ -252,13 +269,19 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
 
                 # Create Image2DModel for the TIC image
                 transform = Identity()
-                data_structures["images"][f"{slice_id}_tic"] = Image2DModel.parse(
-                    tic_image,
-                    transformations={slice_id: transform, "global": transform},
+                data_structures["images"][f"{slice_id}_tic"] = (
+                    Image2DModel.parse(
+                        tic_image,
+                        transformations={
+                            slice_id: transform,
+                            "global": transform,
+                        },
+                    )
                 )
 
             except Exception as e:
                 logging.error(f"Error processing slice {slice_id}: {e}")
                 import traceback
+
                 logging.debug(f"Detailed traceback:\n{traceback.format_exc()}")
                 raise

@@ -41,7 +41,12 @@ def optimize_zarr_chunks(
             # For MSI data, chunk along m/z dimension and larger spatial tiles
             shape = array.shape
             if len(shape) == 4:  # (c, z, y, x)
-                chunks = (min(10000, shape[0]), 1, min(64, shape[2]), min(64, shape[3]))
+                chunks = (
+                    min(10000, shape[0]),
+                    1,
+                    min(64, shape[2]),
+                    min(64, shape[3]),
+                )
 
         # Use original compressor if not provided
         if compressor is None:

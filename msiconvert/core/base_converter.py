@@ -45,7 +45,9 @@ class BaseMSIConverter(ABC):
         self._buffer_size = DEFAULT_BUFFER_SIZE
 
         # Essential metadata properties (loaded during initialization)
-        self._coordinate_bounds: Optional[Tuple[float, float, float, float]] = None
+        self._coordinate_bounds: Optional[
+            Tuple[float, float, float, float]
+        ] = None
         self._n_spectra: Optional[int] = None
         self._estimated_memory_gb: Optional[float] = None
 
@@ -95,7 +97,9 @@ class BaseMSIConverter(ABC):
             # Override pixel size if not provided and available in metadata
             if self.pixel_size_um == 1.0 and essential.pixel_size:
                 self.pixel_size_um = essential.pixel_size[0]
-                logging.info(f"Using detected pixel size: {self.pixel_size_um} μm")
+                logging.info(
+                    f"Using detected pixel size: {self.pixel_size_um} μm"
+                )
 
             # Load mass axis separately (still expensive operation)
             self._common_mass_axis = self.reader.get_common_mass_axis()
@@ -110,8 +114,12 @@ class BaseMSIConverter(ABC):
             logging.info(f"Dataset dimensions: {self._dimensions}")
             logging.info(f"Coordinate bounds: {self._coordinate_bounds}")
             logging.info(f"Total spectra: {self._n_spectra}")
-            logging.info(f"Estimated memory: {self._estimated_memory_gb:.2f} GB")
-            logging.info(f"Common mass axis length: {len(self._common_mass_axis)}")
+            logging.info(
+                f"Estimated memory: {self._estimated_memory_gb:.2f} GB"
+            )
+            logging.info(
+                f"Common mass axis length: {len(self._common_mass_axis)}"
+            )
         except Exception as e:
             logging.error(f"Error during initialization: {e}")
             raise
@@ -140,7 +148,8 @@ class BaseMSIConverter(ABC):
 
         total_spectra = self._get_total_spectra_count()
         logging.info(
-            f"Converting {total_spectra} spectra to {self.__class__.__name__.replace('Converter', '')} format..."
+            f"Converting {total_spectra} spectra to "
+            f"{self.__class__.__name__.replace('Converter', '')} format..."
         )
 
         setattr(self.reader, "_quiet_mode", True)
@@ -152,7 +161,9 @@ class BaseMSIConverter(ABC):
             for coords, mzs, intensities in self.reader.iter_spectra(
                 batch_size=self._buffer_size
             ):
-                self._process_single_spectrum(data_structures, coords, mzs, intensities)
+                self._process_single_spectrum(
+                    data_structures, coords, mzs, intensities
+                )
                 pbar.update(1)
 
     def _get_total_spectra_count(self) -> int:
@@ -184,7 +195,8 @@ class BaseMSIConverter(ABC):
                 self._dimensions[0] * self._dimensions[1] * self._dimensions[2]
             )
             logging.warning(
-                f"Could not determine exact spectra count, estimating {total_pixels} from dimensions"
+                f"Could not determine exact spectra count, estimating {total_pixels} "
+                f"from dimensions"
             )
             return total_pixels
 
@@ -294,7 +306,9 @@ class BaseMSIConverter(ABC):
             # Processing statistics
             "processing_stats": {
                 "total_grid_pixels": (
-                    self._dimensions[0] * self._dimensions[1] * self._dimensions[2]
+                    self._dimensions[0]
+                    * self._dimensions[1]
+                    * self._dimensions[2]
                     if self._dimensions
                     else 0
                 ),
@@ -304,7 +318,9 @@ class BaseMSIConverter(ABC):
         }
 
         # Subclasses should override to add this structured metadata to their outputs
-        logging.info(f"Base metadata structure prepared for {self.__class__.__name__}")
+        logging.info(
+            f"Base metadata structure prepared for {self.__class__.__name__}"
+        )
 
         # Default implementation does nothing - subclasses should override
         pass
@@ -404,7 +420,9 @@ class BaseMSIConverter(ABC):
         n_x, n_y, _ = self._dimensions
         return z * (n_y * n_x) + y * n_x + x
 
-    def _map_mass_to_indices(self, mzs: NDArray[np.float64]) -> NDArray[np.int_]:
+    def _map_mass_to_indices(
+        self, mzs: NDArray[np.float64]
+    ) -> NDArray[np.int_]:
         """
         Map m/z values to indices in the common mass axis with high accuracy.
 

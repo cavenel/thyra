@@ -1,11 +1,9 @@
 # msiconvert/__main__.py
 import argparse
 import logging
-import sys
 from pathlib import Path
 
 from msiconvert.convert import convert_msi
-from msiconvert.core.registry import detect_format, get_reader_class
 from msiconvert.utils.data_processors import optimize_zarr_chunks
 from msiconvert.utils.logging_config import setup_logging
 
@@ -24,13 +22,16 @@ def main():
         help="Output format type: spatialdata (full SpatialData format)",
     )
     parser.add_argument(
-        "--dataset-id", default="msi_dataset", help="Identifier for the dataset"
+        "--dataset-id",
+        default="msi_dataset",
+        help="Identifier for the dataset",
     )
     parser.add_argument(
         "--pixel-size",
         type=float,
         default=None,
-        help="Pixel size in micrometers. If not specified, automatic detection from metadata will be attempted. Required if detection fails.",
+        help="Pixel size in micrometers. If not specified, automatic detection from "
+        "metadata will be attempted. Required if detection fails.",
     )
     parser.add_argument(
         "--handle-3d",
@@ -48,13 +49,17 @@ def main():
         default="INFO",
         help="Set the logging level",
     )
-    parser.add_argument("--log-file", default=None, help="Path to the log file")
+    parser.add_argument(
+        "--log-file", default=None, help="Path to the log file"
+    )
 
     args = parser.parse_args()
 
     # Input validation - check early to give better error messages
     if args.pixel_size is not None and args.pixel_size <= 0:
-        parser.error("Pixel size must be positive (got: {})".format(args.pixel_size))
+        parser.error(
+            "Pixel size must be positive (got: {})".format(args.pixel_size)
+        )
 
     if not args.dataset_id.strip():
         parser.error("Dataset ID cannot be empty")
@@ -86,7 +91,9 @@ def main():
         parser.error(f"Output path already exists: {output_path}")
 
     # Configure logging
-    setup_logging(log_level=getattr(logging, args.log_level), log_file=args.log_file)
+    setup_logging(
+        log_level=getattr(logging, args.log_level), log_file=args.log_file
+    )
 
     # Pixel size handling moved entirely to convert.py
     final_pixel_size = args.pixel_size  # Can be None

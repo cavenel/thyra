@@ -1,7 +1,7 @@
 # msiconvert/core/base_reader.py
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Generator, Optional, Tuple
+from typing import TYPE_CHECKING, Generator, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -57,9 +57,7 @@ class BaseMSIReader(ABC):
         pass
 
     @abstractmethod
-    def iter_spectra(
-        self, batch_size: Optional[int] = None
-    ) -> Generator[
+    def iter_spectra(self, batch_size: Optional[int] = None) -> Generator[
         Tuple[Tuple[int, int, int], NDArray[np.float64], NDArray[np.float64]],
         None,
         None,
@@ -110,9 +108,7 @@ class BaseMSIReader(ABC):
         indices = np.clip(indices, 0, len(common_axis) - 1)
 
         # Verify that we're actually finding the right m/z values
-        max_diff = (
-            1e-6  # A very small tolerance threshold for floating point differences
-        )
+        max_diff = 1e-6  # A very small tolerance threshold for floating point differences
         indices_valid = np.abs(common_axis[indices] - mzs) <= max_diff
 
         # Return only the valid indices and their corresponding intensities

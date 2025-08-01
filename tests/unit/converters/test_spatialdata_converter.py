@@ -1,13 +1,11 @@
 """
 Tests for the SpatialData converter.
 """
-from pathlib import Path
+
 from unittest.mock import MagicMock, patch
 
-import geopandas as gpd
 import numpy as np
 import pandas as pd
-import pytest
 from scipy import sparse
 
 from msiconvert.converters.spatialdata import SpatialDataConverter
@@ -41,7 +39,9 @@ class TestSpatialDataConverter:
         output_path = temp_dir / "test_output.zarr"
 
         # Initialize converter with 3D handling
-        converter = SpatialDataConverter(mock_reader, output_path, handle_3d=True)
+        converter = SpatialDataConverter(
+            mock_reader, output_path, handle_3d=True
+        )
         converter._initialize_conversion()
 
         # Create data structures
@@ -72,7 +72,9 @@ class TestSpatialDataConverter:
         assert isinstance(data_structures["var_df"], pd.DataFrame)
         assert len(data_structures["var_df"]) == 100  # 100 m/z values
 
-    def test_create_data_structures_2d_slices(self, mock_reader, temp_dir, monkeypatch):
+    def test_create_data_structures_2d_slices(
+        self, mock_reader, temp_dir, monkeypatch
+    ):
         """Test creating data structures for 2D slices."""
         output_path = temp_dir / "test_output.zarr"
 
@@ -89,12 +91,17 @@ class TestSpatialDataConverter:
             source_path="/mock/path",
         )
         monkeypatch.setattr(
-            mock_reader.metadata_extractor, "get_essential", lambda: mock_essential
+            mock_reader.metadata_extractor,
+            "get_essential",
+            lambda: mock_essential,
         )
 
         # Initialize converter without 3D handling
         converter = SpatialDataConverter(
-            mock_reader, output_path, handle_3d=False, dataset_id="test_dataset"
+            mock_reader,
+            output_path,
+            handle_3d=False,
+            dataset_id="test_dataset",
         )
         converter._initialize_conversion()
 
@@ -121,7 +128,10 @@ class TestSpatialDataConverter:
 
         # Check sparse matrix for slice
         assert isinstance(slice_data["sparse_data"], sparse.lil_matrix)
-        assert slice_data["sparse_data"].shape == (9, 100)  # 3x3 grid, 100 m/z values
+        assert slice_data["sparse_data"].shape == (
+            9,
+            100,
+        )  # 3x3 grid, 100 m/z values
 
         # Check coordinates dataframe for slice
         assert isinstance(slice_data["coords_df"], pd.DataFrame)
@@ -132,7 +142,9 @@ class TestSpatialDataConverter:
         output_path = temp_dir / "test_output.zarr"
 
         # Initialize converter with 3D handling
-        converter = SpatialDataConverter(mock_reader, output_path, handle_3d=True)
+        converter = SpatialDataConverter(
+            mock_reader, output_path, handle_3d=True
+        )
         converter._initialize_conversion()
 
         # Create data structures
@@ -141,17 +153,27 @@ class TestSpatialDataConverter:
         # Process a test spectrum
         mzs = np.array([200.0, 500.0])  # Example m/z values
         intensities = np.array([100.0, 200.0])  # Example intensities
-        converter._process_single_spectrum(data_structures, (1, 1, 0), mzs, intensities)
+        converter._process_single_spectrum(
+            data_structures, (1, 1, 0), mzs, intensities
+        )
 
         # Check that data was added to the sparse matrix
         pixel_idx = converter._get_pixel_index(1, 1, 0)
         mz_indices = converter._map_mass_to_indices(mzs)
 
-        assert data_structures["sparse_data"][pixel_idx, mz_indices[0]] == 100.0
-        assert data_structures["sparse_data"][pixel_idx, mz_indices[1]] == 200.0
+        assert (
+            data_structures["sparse_data"][pixel_idx, mz_indices[0]] == 100.0
+        )
+        assert (
+            data_structures["sparse_data"][pixel_idx, mz_indices[1]] == 200.0
+        )
 
-    @patch("msiconvert.converters.spatialdata.spatialdata_3d_converter.AnnData")
-    @patch("msiconvert.converters.spatialdata.spatialdata_3d_converter.TableModel")
+    @patch(
+        "msiconvert.converters.spatialdata.spatialdata_3d_converter.AnnData"
+    )
+    @patch(
+        "msiconvert.converters.spatialdata.spatialdata_3d_converter.TableModel"
+    )
     def test_finalize_data_3d_volume(
         self, mock_table_model, mock_anndata, mock_reader, temp_dir
     ):
@@ -168,13 +190,22 @@ class TestSpatialDataConverter:
         mock_table_model.parse.return_value = mock_table
 
         # Mock create_pixel_shapes - need to import the base class for patching
-        from msiconvert.converters.spatialdata.base_spatialdata_converter import BaseSpatialDataConverter
-        original_create_pixel_shapes = BaseSpatialDataConverter._create_pixel_shapes
-        BaseSpatialDataConverter._create_pixel_shapes = MagicMock(return_value=MagicMock())
+        from msiconvert.converters.spatialdata.base_spatialdata_converter import (
+            BaseSpatialDataConverter,
+        )
+
+        original_create_pixel_shapes = (
+            BaseSpatialDataConverter._create_pixel_shapes
+        )
+        BaseSpatialDataConverter._create_pixel_shapes = MagicMock(
+            return_value=MagicMock()
+        )
 
         try:
             # Initialize converter
-            converter = SpatialDataConverter(mock_reader, output_path, handle_3d=True)
+            converter = SpatialDataConverter(
+                mock_reader, output_path, handle_3d=True
+            )
             converter._initialize_conversion()
 
             # Create data structures
@@ -200,12 +231,23 @@ class TestSpatialDataConverter:
 
         finally:
             # Restore original method
-            BaseSpatialDataConverter._create_pixel_shapes = original_create_pixel_shapes
+            BaseSpatialDataConverter._create_pixel_shapes = (
+                original_create_pixel_shapes
+            )
 
-    @patch("msiconvert.converters.spatialdata.spatialdata_2d_converter.AnnData")
-    @patch("msiconvert.converters.spatialdata.spatialdata_2d_converter.TableModel")
+    @patch(
+        "msiconvert.converters.spatialdata.spatialdata_2d_converter.AnnData"
+    )
+    @patch(
+        "msiconvert.converters.spatialdata.spatialdata_2d_converter.TableModel"
+    )
     def test_finalize_data_2d_slices(
-        self, mock_table_model, mock_anndata, mock_reader, temp_dir, monkeypatch
+        self,
+        mock_table_model,
+        mock_anndata,
+        mock_reader,
+        temp_dir,
+        monkeypatch,
     ):
         """Test finalizing data structures for 2D slices."""
         output_path = temp_dir / "test_output.zarr"
@@ -223,7 +265,9 @@ class TestSpatialDataConverter:
             source_path="/mock/path",
         )
         monkeypatch.setattr(
-            mock_reader.metadata_extractor, "get_essential", lambda: mock_essential
+            mock_reader.metadata_extractor,
+            "get_essential",
+            lambda: mock_essential,
         )
 
         # Set up mocks
@@ -236,13 +280,22 @@ class TestSpatialDataConverter:
         mock_table_model.parse.return_value = mock_table
 
         # Mock create_pixel_shapes - need to import the base class for patching
-        from msiconvert.converters.spatialdata.base_spatialdata_converter import BaseSpatialDataConverter
-        original_create_pixel_shapes = BaseSpatialDataConverter._create_pixel_shapes
-        BaseSpatialDataConverter._create_pixel_shapes = MagicMock(return_value=MagicMock())
+        from msiconvert.converters.spatialdata.base_spatialdata_converter import (
+            BaseSpatialDataConverter,
+        )
+
+        original_create_pixel_shapes = (
+            BaseSpatialDataConverter._create_pixel_shapes
+        )
+        BaseSpatialDataConverter._create_pixel_shapes = MagicMock(
+            return_value=MagicMock()
+        )
 
         try:
             # Initialize converter
-            converter = SpatialDataConverter(mock_reader, output_path, handle_3d=False)
+            converter = SpatialDataConverter(
+                mock_reader, output_path, handle_3d=False
+            )
             converter._initialize_conversion()
 
             # Create data structures
@@ -266,7 +319,9 @@ class TestSpatialDataConverter:
             converter._finalize_data(data_structures)
 
             # Check that data was finalized
-            assert mock_anndata.call_count >= 1  # At least one AnnData per slice
+            assert (
+                mock_anndata.call_count >= 1
+            )  # At least one AnnData per slice
             assert (
                 mock_table_model.parse.call_count >= 1
             )  # At least one TableModel per slice
@@ -277,12 +332,18 @@ class TestSpatialDataConverter:
             assert len(data_structures["shapes"]) >= 1
         finally:
             # Restore original method
-            BaseSpatialDataConverter._create_pixel_shapes = original_create_pixel_shapes
+            BaseSpatialDataConverter._create_pixel_shapes = (
+                original_create_pixel_shapes
+            )
 
     @patch("msiconvert.converters.spatialdata.base_spatialdata_converter.box")
     @patch("msiconvert.converters.spatialdata.base_spatialdata_converter.gpd")
-    @patch("msiconvert.converters.spatialdata.base_spatialdata_converter.ShapesModel")
-    @patch("msiconvert.converters.spatialdata.base_spatialdata_converter.Identity")
+    @patch(
+        "msiconvert.converters.spatialdata.base_spatialdata_converter.ShapesModel"
+    )
+    @patch(
+        "msiconvert.converters.spatialdata.base_spatialdata_converter.Identity"
+    )
     def test_create_pixel_shapes(
         self,
         mock_identity,
@@ -328,9 +389,6 @@ class TestSpatialDataConverter:
         # Force a deterministic length to make the loop run exactly 3 times
         type(mock_adata).__len__ = MagicMock(return_value=3)
 
-        # Initialize converter with a fixed pixel size
-        converter = SpatialDataConverter(mock_reader, output_path, pixel_size_um=1.0)
-
         # Patch the implementation's internals to avoid the coordinate extraction issue
         with patch(
             "msiconvert.converters.spatialdata.base_spatialdata_converter.BaseSpatialDataConverter._create_pixel_shapes"
@@ -344,14 +402,18 @@ class TestSpatialDataConverter:
             assert shapes == mock_shapes
             mock_create_shapes.assert_called_once_with(mock_adata, is_3d=False)
 
-    @patch("msiconvert.converters.spatialdata.base_spatialdata_converter.SpatialData")
+    @patch(
+        "msiconvert.converters.spatialdata.base_spatialdata_converter.SpatialData"
+    )
     def test_save_output(self, mock_spatial_data_class, mock_reader, temp_dir):
         """Test saving output."""
         output_path = temp_dir / "test_output.zarr"
 
         # Import the base class to access the method
-        from msiconvert.converters.spatialdata.base_spatialdata_converter import BaseSpatialDataConverter
-        
+        from msiconvert.converters.spatialdata.base_spatialdata_converter import (
+            BaseSpatialDataConverter,
+        )
+
         # Spy on the implementation to understand why write is not being called
         original_save_output = BaseSpatialDataConverter._save_output
 
@@ -412,7 +474,10 @@ class TestSpatialDataConverter:
 
         # Initialize converter
         converter = SpatialDataConverter(
-            mock_reader, output_path, dataset_id="test_dataset", pixel_size_um=2.0
+            mock_reader,
+            output_path,
+            dataset_id="test_dataset",
+            pixel_size_um=2.0,
         )
         converter._initialize_conversion()
 
@@ -420,12 +485,19 @@ class TestSpatialDataConverter:
         converter.add_metadata(mock_sdata)
 
         # Check metadata
-        assert mock_sdata.metadata["conversion_info"]["dataset_id"] == "test_dataset"
+        assert (
+            mock_sdata.metadata["conversion_info"]["dataset_id"]
+            == "test_dataset"
+        )
         assert mock_sdata.metadata["conversion_info"]["pixel_size_um"] == 2.0
         assert "conversion_info" in mock_sdata.metadata
 
-    @patch("msiconvert.converters.spatialdata.base_spatialdata_converter.SpatialData")
-    def test_convert_end_to_end(self, mock_spatial_data, mock_reader, temp_dir):
+    @patch(
+        "msiconvert.converters.spatialdata.base_spatialdata_converter.SpatialData"
+    )
+    def test_convert_end_to_end(
+        self, mock_spatial_data, mock_reader, temp_dir
+    ):
         """Test the full conversion process."""
         output_path = temp_dir / "test_output.zarr"
 
@@ -467,12 +539,17 @@ class TestSpatialDataConverter:
             source_path="/mock/path",
         )
         monkeypatch.setattr(
-            mock_reader.metadata_extractor, "get_essential", lambda: mock_essential
+            mock_reader.metadata_extractor,
+            "get_essential",
+            lambda: mock_essential,
         )
 
         # Initialize converter without 3D handling - make sure to set the dataset_id
         converter = SpatialDataConverter(
-            mock_reader, output_path, handle_3d=False, dataset_id="test_dataset"
+            mock_reader,
+            output_path,
+            handle_3d=False,
+            dataset_id="test_dataset",
         )
         converter._initialize_conversion()
 
@@ -482,7 +559,9 @@ class TestSpatialDataConverter:
         # Process a test spectrum for slice 0
         mzs = np.array([200.0, 500.0])
         intensities = np.array([100.0, 200.0])
-        converter._process_single_spectrum(data_structures, (1, 1, 0), mzs, intensities)
+        converter._process_single_spectrum(
+            data_structures, (1, 1, 0), mzs, intensities
+        )
 
         # Process a test spectrum for slice 1
         mzs2 = np.array([300.0, 600.0])

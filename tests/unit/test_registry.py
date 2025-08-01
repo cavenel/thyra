@@ -1,7 +1,6 @@
 """
 Tests for the simplified format registry system.
 """
-from pathlib import Path
 
 import pytest
 
@@ -136,7 +135,9 @@ class TestRegistry:
         imzml_file = tmp_path / "test.imzml"
         imzml_file.touch()
 
-        with pytest.raises(ValueError, match="requires corresponding .ibd file"):
+        with pytest.raises(
+            ValueError, match="requires corresponding .ibd file"
+        ):
             detect_format(imzml_file)
 
     def test_bruker_missing_analysis_files(self, tmp_path):

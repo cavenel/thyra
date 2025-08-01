@@ -4,13 +4,11 @@ import traceback
 import warnings
 from pathlib import Path
 
-from .core.base_reader import BaseMSIReader
 from .core.registry import detect_format, get_converter_class, get_reader_class
-from .metadata.types import EssentialMetadata
 
 warnings.filterwarnings(
     "ignore",
-    message=r"Accession IMS:1000046.*",  # or just "ignore" all UserWarning from that module
+    message=r"Accession IMS:1000046.*",  # ignore UserWarning
     category=UserWarning,
     module=r"pyimzml.ontology.ontology",
 )
@@ -21,17 +19,10 @@ warnings.filterwarnings(
 # )
 
 
-def convert_msi(
-    input_path: str,
-    output_path: str,
-    format_type: str = "spatialdata",
-    dataset_id: str = "msi_dataset",
-    pixel_size_um: float = None,
-    handle_3d: bool = False,
-    **kwargs,
+def _validate_input_parameters(
+    input_path, output_path, format_type, dataset_id, pixel_size_um, handle_3d
 ) -> bool:
-    """Convert MSI data to the specified format with enhanced error handling and automatic pixel size detection."""
-
+    """Validate all input parameters for convert_msi function."""
     if not input_path or not isinstance(input_path, (str, Path)):
         logging.error("Input path must be a valid string or Path object")
         return False
@@ -58,11 +49,11 @@ def convert_msi(
         logging.error("handle_3d must be a boolean value")
         return False
 
-    input_path = Path(input_path).resolve()
-    output_path = Path(output_path).resolve()
+    return True
 
-    logging.info(f"Processing input file: {input_path}")
 
+def _validate_paths(input_path: Path, output_path: Path) -> bool:
+    """Validate that input exists and output doesn't exist."""
     if not input_path.exists():
         logging.error(f"Input path does not exist: {input_path}")
         return False
@@ -71,104 +62,167 @@ def convert_msi(
         logging.error(f"Destination {output_path} already exists.")
         return False
 
+    return True
+
+
+def _create_reader(input_path: Path):
+    """Create and return a reader for the input format."""
+    input_format = detect_format(input_path)
+    logging.info(f"Detected format: {input_format}")
+    reader_class = get_reader_class(input_format)
+    logging.info(f"Using reader: {reader_class.__name__}")
+    return reader_class(input_path), input_format
+
+
+def _determine_pixel_size(reader, pixel_size_um, input_format):
+    """Determine pixel size either from metadata or user input."""
+    if pixel_size_um is not None:
+        # Manual pixel size was provided
+        pixel_size_detection_info = {
+            "method": "manual",
+            "source_format": input_format,
+            "detection_successful": False,
+            "note": "Pixel size manually specified via --pixel-size parameter",
+        }
+        return pixel_size_um, pixel_size_detection_info
+
+    # Attempt automatic detection
+    logging.info("Attempting automatic pixel size detection...")
+    essential_metadata = reader.get_essential_metadata()
+
+    if essential_metadata.pixel_size is None:
+        logging.error("✗ Pixel size not found in metadata")
+        logging.error("Use --pixel-size parameter (e.g., --pixel-size 25)")
+        raise ValueError("Pixel size not found in metadata")
+
+    final_pixel_size = essential_metadata.pixel_size[0]  # Use X size
+    logging.info(f"✓ Detected pixel size: {final_pixel_size:.1f} µm")
+
+    pixel_size_detection_info = {
+        "method": "automatic",
+        "detected_x_um": float(essential_metadata.pixel_size[0]),
+        "detected_y_um": float(essential_metadata.pixel_size[1]),
+        "source_format": input_format,
+        "detection_successful": True,
+        "note": "Pixel size automatically detected from source metadata",
+    }
+
+    return final_pixel_size, pixel_size_detection_info
+
+
+def _create_converter(
+    format_type,
+    reader,
+    output_path,
+    dataset_id,
+    pixel_size_um,
+    handle_3d,
+    pixel_size_detection_info,
+    **kwargs,
+):
+    """Create and return a converter for the specified format."""
+    try:
+        converter_class = get_converter_class(format_type.lower())
+        logging.info(f"Using converter: {converter_class.__name__}")
+    except ValueError as e:
+        if "spatialdata" in format_type.lower():
+            logging.error(
+                "SpatialData converter is not available due to "
+                "dependency issues."
+            )
+            logging.error(
+                "This is commonly caused by zarr version incompatibility."
+            )
+            logging.error("Try upgrading your dependencies:")
+            logging.error("  pip install --upgrade anndata spatialdata zarr")
+            logging.error(
+                "Or create a fresh environment with compatible versions."
+            )
+            raise ValueError("SpatialData converter unavailable") from e
+        else:
+            raise e
+    return converter_class(
+        reader,
+        output_path,
+        dataset_id=dataset_id,
+        pixel_size_um=pixel_size_um,
+        handle_3d=handle_3d,
+        pixel_size_detection_info=pixel_size_detection_info,
+        **kwargs,
+    )
+
+
+def _perform_conversion_with_cleanup(converter, reader):
+    """Perform the conversion and handle reader cleanup."""
+    try:
+        logging.info("Starting conversion...")
+        result = converter.convert()
+        logging.info(
+            f"Conversion {'completed successfully' if result else 'failed'}"
+        )
+        return result
+    finally:
+        if hasattr(reader, "close"):
+            reader.close()
+
+
+def convert_msi(
+    input_path: str,
+    output_path: str,
+    format_type: str = "spatialdata",
+    dataset_id: str = "msi_dataset",
+    pixel_size_um: float = None,
+    handle_3d: bool = False,
+    **kwargs,
+) -> bool:
+    """
+    Convert MSI data to the specified format with enhanced error handling and
+    automatic pixel size detection.
+    """
+    # Validate input parameters
+    if not _validate_input_parameters(
+        input_path,
+        output_path,
+        format_type,
+        dataset_id,
+        pixel_size_um,
+        handle_3d,
+    ):
+        return False
+
+    # Convert to Path objects and validate
+    input_path = Path(input_path).resolve()
+    output_path = Path(output_path).resolve()
+    logging.info(f"Processing input file: {input_path}")
+
+    if not _validate_paths(input_path, output_path):
+        return False
+
     try:
         # Create reader
-        input_format = detect_format(input_path)
-        logging.info(f"Detected format: {input_format}")
-        reader_class = get_reader_class(input_format)
-        logging.info(f"Using reader: {reader_class.__name__}")
-        reader = reader_class(input_path)
-        should_close_reader = True
+        reader, input_format = _create_reader(input_path)
 
-        # Handle automatic pixel size detection if not provided
-        final_pixel_size = pixel_size_um
-        pixel_size_detection_info = None
-
-        if pixel_size_um is None:
-            logging.info("Attempting automatic pixel size detection...")
-            try:
-                essential_metadata = reader.get_essential_metadata()
-
-                if essential_metadata.pixel_size is not None:
-                    final_pixel_size = essential_metadata.pixel_size[0]  # Use X size
-                    logging.info(f"✓ Detected pixel size: {final_pixel_size:.1f} µm")
-
-                    pixel_size_detection_info = {
-                        "method": "automatic",
-                        "detected_x_um": float(essential_metadata.pixel_size[0]),
-                        "detected_y_um": float(essential_metadata.pixel_size[1]),
-                        "source_format": input_format,
-                        "detection_successful": True,
-                        "note": "Pixel size automatically detected from source metadata",
-                    }
-                else:
-                    logging.error("✗ Pixel size not found in metadata")
-                    logging.error("Use --pixel-size parameter (e.g., --pixel-size 25)")
-                    return False
-
-            except Exception as e:
-                logging.error(f"✗ Failed to extract metadata: {e}")
-                logging.error("Use --pixel-size parameter (e.g., --pixel-size 25)")
-                return False
-        else:
-            # Manual pixel size was provided
-            pixel_size_detection_info = {
-                "method": "manual",
-                "source_format": input_format,
-                "detection_successful": False,
-                "note": "Pixel size manually specified via --pixel-size parameter",
-            }
+        # Determine pixel size
+        final_pixel_size, pixel_size_detection_info = _determine_pixel_size(
+            reader, pixel_size_um, input_format
+        )
 
         # Create converter
-        try:
-            converter_class = get_converter_class(format_type.lower())
-            logging.info(f"Using converter: {converter_class.__name__}")
-        except ValueError as e:
-            if "spatialdata" in format_type.lower():
-                logging.error(
-                    "SpatialData converter is not available due to dependency issues."
-                )
-                logging.error(
-                    "This is commonly caused by zarr version incompatibility."
-                )
-                logging.error("Try upgrading your dependencies:")
-                logging.error("  pip install --upgrade anndata spatialdata zarr")
-                logging.error("Or create a fresh environment with compatible versions.")
-                return False
-            else:
-                raise e
-        converter = converter_class(
+        converter = _create_converter(
+            format_type,
             reader,
             output_path,
-            dataset_id=dataset_id,
-            pixel_size_um=final_pixel_size,
-            handle_3d=handle_3d,
-            pixel_size_detection_info=pixel_size_detection_info,
+            dataset_id,
+            final_pixel_size,
+            handle_3d,
+            pixel_size_detection_info,
             **kwargs,
         )
 
-        # Run conversion
-        logging.info("Starting conversion...")
-        result = converter.convert()
-        logging.info(f"Conversion {'completed successfully' if result else 'failed'}")
+        # Perform conversion with cleanup
+        return _perform_conversion_with_cleanup(converter, reader)
 
-        # Only close reader if we created it
-        if should_close_reader and hasattr(reader, "close"):
-            reader.close()
-
-        return result
     except Exception as e:
         logging.error(f"Error during conversion: {e}")
-        # Log detailed traceback for debugging
         logging.error(f"Detailed traceback:\n{traceback.format_exc()}")
-
-        # Ensure cleanup on exception if we created the reader
-        if (
-            "should_close_reader" in locals()
-            and should_close_reader
-            and "reader" in locals()
-            and hasattr(reader, "close")
-        ):
-            reader.close()
-
         return False

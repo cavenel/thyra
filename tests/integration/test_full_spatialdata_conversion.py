@@ -66,8 +66,9 @@ def test_spatialdata_integration():
             # Let's first check if spatialdata dependencies are available
             try:
                 from spatialdata import SpatialData
-                from spatialdata.models import ShapesModel, TableModel
-                from spatialdata.transformations import Identity
+                from msiconvert.converters.spatialdata import (
+                    SpatialDataConverter,
+                )
 
                 print("   ✅ SpatialData dependencies available")
                 SPATIALDATA_AVAILABLE = True
@@ -86,11 +87,14 @@ def test_spatialdata_integration():
             # Try to import the converter directly
             # We need to find where the spatialdata_converter.py actually lives
             converter_path = (
-                Path(__file__).parent.parent.parent / "spatialdata_converter.py"
+                Path(__file__).parent.parent.parent
+                / "spatialdata_converter.py"
             )
 
             if not converter_path.exists():
-                print(f"   ❌ spatialdata_converter.py not found at: {converter_path}")
+                print(
+                    f"   ❌ spatialdata_converter.py not found at: {converter_path}"
+                )
                 print("   Will test reader interface compatibility instead...")
                 return test_reader_interface_only(reader)
 
@@ -121,7 +125,9 @@ def test_spatialdata_integration():
                     n_x, n_y, n_z = self._dimensions
                     n_pixels = n_x * n_y * n_z
                     n_masses = len(self._common_mass_axis)
-                    return sparse.lil_matrix((n_pixels, n_masses), dtype=np.float64)
+                    return sparse.lil_matrix(
+                        (n_pixels, n_masses), dtype=np.float64
+                    )
 
                 def _create_coordinates_dataframe(self):
                     import pandas as pd
@@ -168,7 +174,9 @@ def test_spatialdata_integration():
 
                 def _map_mass_to_indices(self, mzs):
                     """Map m/z values to indices in common mass axis"""
-                    indices = np.searchsorted(self._common_mass_axis, mzs, side="left")
+                    indices = np.searchsorted(
+                        self._common_mass_axis, mzs, side="left"
+                    )
                     # Filter to valid indices and exact matches
                     valid_mask = (indices < len(self._common_mass_axis)) & (
                         indices >= 0
@@ -192,7 +200,9 @@ def test_spatialdata_integration():
                     if len(mz_indices) > 0:
                         for i, intensity in enumerate(intensities):
                             if i < len(mz_indices):
-                                sparse_matrix[pixel_idx, mz_indices[i]] = intensity
+                                sparse_matrix[pixel_idx, mz_indices[i]] = (
+                                    intensity
+                                )
 
                 def _get_pixel_index(self, x, y, z):
                     """Get linear pixel index from 3D coordinates"""
@@ -211,11 +221,15 @@ def test_spatialdata_integration():
             # Inject mocks into sys.modules
             import types
 
-            mock_base_module = types.ModuleType("msiconvert.core.base_converter")
+            mock_base_module = types.ModuleType(
+                "msiconvert.core.base_converter"
+            )
             mock_base_module.BaseMSIConverter = MockBaseMSIConverter
             sys.modules["msiconvert.core.base_converter"] = mock_base_module
 
-            mock_reader_module = types.ModuleType("msiconvert.core.base_reader")
+            mock_reader_module = types.ModuleType(
+                "msiconvert.core.base_reader"
+            )
             mock_reader_module.BaseMSIReader = MockBaseMSIReader
             sys.modules["msiconvert.core.base_reader"] = mock_reader_module
 
@@ -239,7 +253,9 @@ def test_spatialdata_integration():
             return test_reader_interface_only(reader)
 
         # Step 3: Create converter and test conversion
-        print("\n🔄 Step 3: Create SpatialDataConverter and test conversion...")
+        print(
+            "\n🔄 Step 3: Create SpatialDataConverter and test conversion..."
+        )
 
         try:
             # Create converter instance
@@ -271,7 +287,9 @@ def test_spatialdata_integration():
             print("   🏗️  Creating data structures...")
             data_structures = converter._create_data_structures()
 
-            print(f"   ✅ Data structures created (mode: {data_structures['mode']})")
+            print(
+                f"   ✅ Data structures created (mode: {data_structures['mode']})"
+            )
 
             # Process a limited number of spectra for testing
             print("   📊 Processing spectra (limited sample)...")
@@ -341,13 +359,21 @@ def test_spatialdata_integration():
                     try:
                         loaded_sdata = SpatialData.read(str(output_path))
                         print("   ✅ SpatialData loaded successfully")
-                        print(f"      - Tables: {list(loaded_sdata.tables.keys())}")
-                        print(f"      - Shapes: {list(loaded_sdata.shapes.keys())}")
-                        print(f"      - Images: {list(loaded_sdata.images.keys())}")
+                        print(
+                            f"      - Tables: {list(loaded_sdata.tables.keys())}"
+                        )
+                        print(
+                            f"      - Shapes: {list(loaded_sdata.shapes.keys())}"
+                        )
+                        print(
+                            f"      - Images: {list(loaded_sdata.images.keys())}"
+                        )
 
                         # Check a table
                         if loaded_sdata.tables:
-                            first_table_name = list(loaded_sdata.tables.keys())[0]
+                            first_table_name = list(
+                                loaded_sdata.tables.keys()
+                            )[0]
                             first_table = loaded_sdata.tables[first_table_name]
                             print(
                                 f"      - First table shape: {first_table.table.shape}"
@@ -425,7 +451,9 @@ def main():
 
     if success:
         print("\n🎉 ALL TESTS PASSED!")
-        print("The Bruker Reader is fully compatible with spatialdata_converter.py")
+        print(
+            "The Bruker Reader is fully compatible with spatialdata_converter.py"
+        )
     else:
         print("\n❌ TESTS FAILED!")
         print("Check the error messages above for details")

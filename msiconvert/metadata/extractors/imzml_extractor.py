@@ -1,6 +1,5 @@
 # msiconvert/metadata/extractors/imzml_extractor.py
 import logging
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
@@ -66,7 +65,9 @@ class ImzMLMetadataExtractor(MetadataExtractor):
             raw_metadata=self._extract_raw_metadata(),
         )
 
-    def _calculate_dimensions(self, coords: NDArray[np.int_]) -> Tuple[int, int, int]:
+    def _calculate_dimensions(
+        self, coords: NDArray[np.int_]
+    ) -> Tuple[int, int, int]:
         """Calculate dataset dimensions from coordinates."""
         if len(coords) == 0:
             return (0, 0, 0)
@@ -75,7 +76,11 @@ class ImzMLMetadataExtractor(MetadataExtractor):
         coords_0based = coords - 1
 
         max_coords = np.max(coords_0based, axis=0)
-        return (int(max_coords[0]) + 1, int(max_coords[1]) + 1, int(max_coords[2]) + 1)
+        return (
+            int(max_coords[0]) + 1,
+            int(max_coords[1]) + 1,
+            int(max_coords[2]) + 1,
+        )
 
     def _calculate_bounds(
         self, coords: NDArray[np.int_]
@@ -160,9 +165,11 @@ class ImzMLMetadataExtractor(MetadataExtractor):
         """Extract ImzML format-specific metadata."""
         format_specific = {
             "imzml_version": "1.1.0",  # Default version
-            "file_mode": "continuous"
-            if getattr(self.parser, "continuous", False)
-            else "processed",
+            "file_mode": (
+                "continuous"
+                if getattr(self.parser, "continuous", False)
+                else "processed"
+            ),
             "ibd_file": str(self.imzml_path.with_suffix(".ibd")),
             "uuid": None,
             "spectrum_count": len(self.parser.coordinates),
@@ -224,7 +231,9 @@ class ImzMLMetadataExtractor(MetadataExtractor):
             ]
             for key in instrument_keys:
                 if key in self.parser.imzmldict:
-                    instrument[key.replace(" ", "_")] = self.parser.imzmldict[key]
+                    instrument[key.replace(" ", "_")] = self.parser.imzmldict[
+                        key
+                    ]
 
         return instrument
 

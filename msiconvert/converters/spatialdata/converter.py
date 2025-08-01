@@ -6,14 +6,17 @@ from typing import Any, Dict, Optional
 
 from ...core.base_reader import BaseMSIReader
 from ...core.registry import register_converter
+from .base_spatialdata_converter import (
+    SPATIALDATA_AVAILABLE,
+    _import_error_msg,
+)
 from .spatialdata_2d_converter import SpatialData2DConverter
 from .spatialdata_3d_converter import SpatialData3DConverter
-from .base_spatialdata_converter import SPATIALDATA_AVAILABLE, _import_error_msg
 
 
 class SpatialDataConverter:
     """Factory converter for MSI data to SpatialData format.
-    
+
     Creates appropriate 2D or 3D converter based on handle_3d parameter and data dimensions.
     """
 

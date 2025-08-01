@@ -1,6 +1,7 @@
 """
 Tests for the imzML reader.
 """
+
 import numpy as np
 import pytest
 
@@ -99,7 +100,11 @@ class TestImzMLReader:
 
         # Count spectra and check data
         count = 0
-        for coords, spectrum_mzs, spectrum_intensities in reader.iter_spectra():
+        for (
+            coords,
+            spectrum_mzs,
+            spectrum_intensities,
+        ) in reader.iter_spectra():
             # Check coordinates format
             assert len(coords) == 3
             x, y, z = coords
@@ -129,15 +134,19 @@ class TestImzMLReader:
 
         reader = ImzMLReader(imzml_path)
 
-        # Get common mass axis
-        common_axis = reader.get_common_mass_axis()
+        # Get common mass axis (test that it works)
+        reader.get_common_mass_axis()
 
         # Manually collect data similar to what the former 'read' method would do
         coordinates = []
         intensities = []
 
         # Iterate through all spectra
-        for coords, spectrum_mzs, spectrum_intensities in reader.iter_spectra():
+        for (
+            coords,
+            spectrum_mzs,
+            spectrum_intensities,
+        ) in reader.iter_spectra():
             coordinates.append(coords)
 
             # In a real application, you might need to map these to the common axis

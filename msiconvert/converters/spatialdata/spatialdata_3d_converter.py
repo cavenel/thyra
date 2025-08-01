@@ -6,13 +6,16 @@ from typing import Any, Dict, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
-from .base_spatialdata_converter import BaseSpatialDataConverter, SPATIALDATA_AVAILABLE
+from .base_spatialdata_converter import (
+    SPATIALDATA_AVAILABLE,
+    BaseSpatialDataConverter,
+)
 
 if SPATIALDATA_AVAILABLE:
+    import xarray as xr
     from anndata import AnnData
     from spatialdata.models import Image2DModel, TableModel
     from spatialdata.transformations import Identity
-    import xarray as xr
 
 
 class SpatialData3DConverter(BaseSpatialDataConverter):
@@ -20,7 +23,7 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
 
     def __init__(self, *args, **kwargs):
         """Initialize 3D converter with handle_3d=True."""
-        kwargs['handle_3d'] = True  # Force 3D mode
+        kwargs["handle_3d"] = True  # Force 3D mode
         super().__init__(*args, **kwargs)
 
     def _create_data_structures(self) -> Dict[str, Any]:
@@ -51,7 +54,9 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
             "shapes": shapes,
             "images": images,
             "tic_values": np.zeros((n_y, n_x, n_z), dtype=np.float64),
-            "total_intensity": np.zeros(len(self._common_mass_axis), dtype=np.float64),
+            "total_intensity": np.zeros(
+                len(self._common_mass_axis), dtype=np.float64
+            ),
             "pixel_count": 0,
         }
 
@@ -106,19 +111,13 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
             raise ImportError("SpatialData dependencies not available")
 
         try:
-            # Calculate average mass spectrum
-            if data_structures["pixel_count"] > 0:
-                avg_spectrum = (
-                    data_structures["total_intensity"] / data_structures["pixel_count"]
-                )
-            else:
-                avg_spectrum = data_structures["total_intensity"].copy()
-
             # Store pixel count for metadata
             self._non_empty_pixel_count = data_structures["pixel_count"]
 
             # Convert to CSR format for efficiency
-            data_structures["sparse_data"] = data_structures["sparse_data"].tocsr()
+            data_structures["sparse_data"] = data_structures[
+                "sparse_data"
+            ].tocsr()
 
             # Create AnnData
             adata = AnnData(
@@ -158,6 +157,7 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
         except Exception as e:
             logging.error(f"Error processing 3D volume: {e}")
             import traceback
+
             logging.debug(f"Detailed traceback:\n{traceback.format_exc()}")
             raise
 
@@ -179,7 +179,9 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
             z_size, y_size, x_size = tic_values.shape
 
             # Add channel dimension for 3D image
-            tic_values_with_channel = tic_values.reshape(1, z_size, y_size, x_size)
+            tic_values_with_channel = tic_values.reshape(
+                1, z_size, y_size, x_size
+            )
 
             tic_image = xr.DataArray(
                 tic_values_with_channel,
@@ -196,12 +198,15 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
             transform = Identity()
             try:
                 from spatialdata.models import Image3DModel
-                data_structures["images"][f"{self.dataset_id}_tic"] = Image3DModel.parse(
-                    tic_image,
-                    transformations={
-                        self.dataset_id: transform,
-                        "global": transform,
-                    },
+
+                data_structures["images"][f"{self.dataset_id}_tic"] = (
+                    Image3DModel.parse(
+                        tic_image,
+                        transformations={
+                            self.dataset_id: transform,
+                            "global": transform,
+                        },
+                    )
                 )
             except (ImportError, AttributeError):
                 # Fallback if Image3DModel is not available
@@ -209,21 +214,24 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
                     "Image3DModel not available, using generic image model"
                 )
                 from spatialdata.models import ImageModel
-                data_structures["images"][f"{self.dataset_id}_tic"] = ImageModel.parse(
-                    tic_image,
-                    transformations={
-                        self.dataset_id: transform,
-                        "global": transform,
-                    },
+
+                data_structures["images"][f"{self.dataset_id}_tic"] = (
+                    ImageModel.parse(
+                        tic_image,
+                        transformations={
+                            self.dataset_id: transform,
+                            "global": transform,
+                        },
+                    )
                 )
         else:
             # Single 2D slice
             tic_values = data_structures["tic_values"]
-            
+
             # Handle both 3D array with single z-slice and 2D array
             if len(tic_values.shape) == 3:
                 tic_values = tic_values[:, :, 0]
-            
+
             y_size, x_size = tic_values.shape
 
             # Add channel dimension to make it (c, y, x)
@@ -241,10 +249,12 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
 
             # Create Image2DModel for the TIC image
             transform = Identity()
-            data_structures["images"][f"{self.dataset_id}_tic"] = Image2DModel.parse(
-                tic_image,
-                transformations={
-                    self.dataset_id: transform,
-                    "global": transform,
-                },
+            data_structures["images"][f"{self.dataset_id}_tic"] = (
+                Image2DModel.parse(
+                    tic_image,
+                    transformations={
+                        self.dataset_id: transform,
+                        "global": transform,
+                    },
+                )
             )

@@ -66,17 +66,27 @@ class BrukerMetadataExtractor(MetadataExtractor):
             if not frame_result:
                 raise ValueError("No data found in MaldiFrameInfo table")
 
-            min_x_raw, max_x_raw, min_y_raw, max_y_raw, frame_count = frame_result
+            min_x_raw, max_x_raw, min_y_raw, max_y_raw, frame_count = (
+                frame_result
+            )
 
             # Extract imaging area bounds for normalization
-            imaging_min_x = bounds_data.get("ImagingAreaMinXIndexPos", min_x_raw or 0)
-            imaging_max_x = bounds_data.get("ImagingAreaMaxXIndexPos", max_x_raw or 0)
-            imaging_min_y = bounds_data.get("ImagingAreaMinYIndexPos", min_y_raw or 0)
-            imaging_max_y = bounds_data.get("ImagingAreaMaxYIndexPos", max_y_raw or 0)
+            imaging_min_x = bounds_data.get(
+                "ImagingAreaMinXIndexPos", min_x_raw or 0
+            )
+            imaging_max_x = bounds_data.get(
+                "ImagingAreaMaxXIndexPos", max_x_raw or 0
+            )
+            imaging_min_y = bounds_data.get(
+                "ImagingAreaMinYIndexPos", min_y_raw or 0
+            )
+            imaging_max_y = bounds_data.get(
+                "ImagingAreaMaxYIndexPos", max_y_raw or 0
+            )
 
             # Store imaging area offsets for coordinate normalization
             imaging_area_offsets = (int(imaging_min_x), int(imaging_min_y), 0)
-            
+
             # Normalize coordinates to start from 0
             min_x = 0.0  # Normalized coordinates always start from 0
             max_x = float(imaging_max_x - imaging_min_x)
@@ -100,7 +110,10 @@ class BrukerMetadataExtractor(MetadataExtractor):
                 missing_mass_keys.append("MzAcqRangeUpper")
 
             if missing_mass_keys:
-                error_msg = f"Missing critical mass range bounds in GlobalMetadata: {', '.join(missing_mass_keys)}. Cannot establish mass range."
+                error_msg = (
+                    f"Missing critical mass range bounds in GlobalMetadata: "
+                    f"{', '.join(missing_mass_keys)}. Cannot establish mass range."
+                )
                 logger.error(error_msg)
                 raise ValueError(error_msg)
 
@@ -149,7 +162,9 @@ class BrukerMetadataExtractor(MetadataExtractor):
                 f"Failed to extract essential metadata from Bruker database: {e}"
             )
         except Exception as e:
-            logger.error(f"Unexpected error extracting essential metadata: {e}")
+            logger.error(
+                f"Unexpected error extracting essential metadata: {e}"
+            )
             raise
 
     def _extract_comprehensive_impl(self) -> ComprehensiveMetadata:
@@ -193,15 +208,21 @@ class BrukerMetadataExtractor(MetadataExtractor):
         # - mz + intensity arrays
         avg_peaks_per_frame = 2000
         bytes_per_value = 8
-        estimated_bytes = frame_count * avg_peaks_per_frame * 2 * bytes_per_value
+        estimated_bytes = (
+            frame_count * avg_peaks_per_frame * 2 * bytes_per_value
+        )
 
         return estimated_bytes / (1024**3)  # Convert to GB
 
     def _extract_bruker_specific(self) -> Dict[str, Any]:
         """Extract Bruker format-specific metadata."""
         format_specific = {
-            "bruker_format": "bruker_tdf" if self._is_tdf_format() else "bruker_tsf",
-            "data_format": "bruker_tdf" if self._is_tdf_format() else "bruker_tsf",
+            "bruker_format": (
+                "bruker_tdf" if self._is_tdf_format() else "bruker_tsf"
+            ),
+            "data_format": (
+                "bruker_tdf" if self._is_tdf_format() else "bruker_tsf"
+            ),
             "data_path": str(self.data_path),
             "database_path": str(self.data_path / "analysis.tsf"),
             "is_maldi": self._is_maldi_dataset(),
@@ -209,9 +230,13 @@ class BrukerMetadataExtractor(MetadataExtractor):
 
         # Add file type detection
         if (self.data_path / "analysis.tdf").exists():
-            format_specific["binary_file"] = str(self.data_path / "analysis.tdf")
+            format_specific["binary_file"] = str(
+                self.data_path / "analysis.tdf"
+            )
         elif (self.data_path / "analysis.tsf").exists():
-            format_specific["binary_file"] = str(self.data_path / "analysis.tsf")
+            format_specific["binary_file"] = str(
+                self.data_path / "analysis.tsf"
+            )
 
         return format_specific
 
@@ -239,14 +264,14 @@ class BrukerMetadataExtractor(MetadataExtractor):
                     params["laser_frequency"] = laser_freq
                 if beam_x is not None:
                     params["beam_scan_size_x"] = beam_x
-                    params[
-                        "BeamScanSizeX"
-                    ] = beam_x  # Add both formats for compatibility
+                    params["BeamScanSizeX"] = (
+                        beam_x  # Add both formats for compatibility
+                    )
                 if beam_y is not None:
                     params["beam_scan_size_y"] = beam_y
-                    params[
-                        "BeamScanSizeY"
-                    ] = beam_y  # Add both formats for compatibility
+                    params["BeamScanSizeY"] = (
+                        beam_y  # Add both formats for compatibility
+                    )
                 if spot_size is not None:
                     params["laser_spot_size"] = spot_size
 
@@ -307,7 +332,8 @@ class BrukerMetadataExtractor(MetadataExtractor):
 
             # Extract frame info for tests that expect it
             cursor.execute(
-                "SELECT Id, SpotXPos, SpotYPos, BeamScanSizeX, BeamScanSizeY FROM MaldiFrameLaserInfo"
+                "SELECT Id, SpotXPos, SpotYPos, BeamScanSizeX, BeamScanSizeY "
+                "FROM MaldiFrameLaserInfo"
             )
             frame_info = []
             for row in cursor.fetchall():

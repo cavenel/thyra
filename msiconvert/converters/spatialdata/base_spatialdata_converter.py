@@ -1,9 +1,9 @@
 # msiconvert/converters/spatialdata/base_spatialdata_converter.py
 
 import logging
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
 from abc import ABC, abstractmethod
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -74,12 +74,17 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         """
         # Check if SpatialData is available
         if not SPATIALDATA_AVAILABLE:
-            error_msg = f"SpatialData dependencies not available: {_import_error_msg}. Please install required packages or fix dependency conflicts."
+            error_msg = (
+                f"SpatialData dependencies not available: {_import_error_msg}. "
+                f"Please install required packages or fix dependency conflicts."
+            )
             raise ImportError(error_msg)
 
         # Validate inputs
         if pixel_size_um <= 0:
-            raise ValueError(f"pixel_size_um must be positive, got {pixel_size_um}")
+            raise ValueError(
+                f"pixel_size_um must be positive, got {pixel_size_um}"
+            )
         if not dataset_id.strip():
             raise ValueError("dataset_id cannot be empty")
 
@@ -89,7 +94,9 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             pixel_size_detection_info is None
             and "pixel_size_detection_info" in kwargs_filtered
         ):
-            pixel_size_detection_info = kwargs_filtered.pop("pixel_size_detection_info")
+            pixel_size_detection_info = kwargs_filtered.pop(
+                "pixel_size_detection_info"
+            )
 
         super().__init__(
             reader,
@@ -143,23 +150,26 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         n_x, n_y, n_z = self._dimensions
 
         # Pre-allocate arrays for better performance
-        pixel_count = n_x * n_y * n_z
         coords_data = []
 
         pixel_idx = 0
         for z in range(n_z):
             for y in range(n_y):
                 for x in range(n_x):
-                    coords_data.append({
-                        "x": x,
-                        "y": y,
-                        "z": z if n_z > 1 else 0,
-                        "instance_id": str(pixel_idx),
-                        "region": f"{self.dataset_id}_pixels",
-                        "spatial_x": x * self.pixel_size_um,
-                        "spatial_y": y * self.pixel_size_um,
-                        "spatial_z": z * self.pixel_size_um if n_z > 1 else 0.0,
-                    })
+                    coords_data.append(
+                        {
+                            "x": x,
+                            "y": y,
+                            "z": z if n_z > 1 else 0,
+                            "instance_id": str(pixel_idx),
+                            "region": f"{self.dataset_id}_pixels",
+                            "spatial_x": x * self.pixel_size_um,
+                            "spatial_y": y * self.pixel_size_um,
+                            "spatial_z": (
+                                z * self.pixel_size_um if n_z > 1 else 0.0
+                            ),
+                        }
+                    )
                     pixel_idx += 1
 
         coords_df = pd.DataFrame(coords_data)
@@ -190,7 +200,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
 
         Args:
             x: X coordinate
-            y: Y coordinate  
+            y: Y coordinate
             z: Z coordinate
 
         Returns:
@@ -223,7 +233,9 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         """
         sparse_matrix[pixel_idx, mz_indices] = intensities
 
-    def _create_pixel_shapes(self, adata: AnnData, is_3d: bool = False) -> "ShapesModel":
+    def _create_pixel_shapes(
+        self, adata: AnnData, is_3d: bool = False
+    ) -> "ShapesModel":
         """
         Create geometric shapes for pixels with proper transformations.
 
@@ -247,7 +259,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         # Create geometries efficiently - this loop could be optimized but kept for clarity
         half_pixel = self.pixel_size_um / 2
         geometries = []
-        
+
         for i in range(len(adata)):
             x, y = x_coords[i], y_coords[i]
             pixel_box = box(
@@ -283,7 +295,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             # Create SpatialData object with images included
             sdata = SpatialData(
                 tables=data_structures["tables"],
-                shapes=data_structures["shapes"], 
+                shapes=data_structures["shapes"],
                 images=data_structures["images"],
             )
 
@@ -292,11 +304,14 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
 
             # Write to disk
             sdata.write(str(self.output_path))
-            logging.info(f"Successfully saved SpatialData to {self.output_path}")
+            logging.info(
+                f"Successfully saved SpatialData to {self.output_path}"
+            )
             return True
         except Exception as e:
             logging.error(f"Error saving SpatialData: {e}")
             import traceback
+
             logging.debug(f"Detailed traceback:\n{traceback.format_exc()}")
             return False
 
@@ -325,6 +340,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         # Import version dynamically (fix for hard-coded version)
         try:
             from ... import __version__
+
             version = __version__
         except ImportError:
             version = "unknown"
@@ -360,19 +376,19 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
 
         # Add comprehensive metadata sections to SpatialData attributes
         if comprehensive_metadata_obj.format_specific:
-            pixel_size_attrs[
-                "format_specific_metadata"
-            ] = comprehensive_metadata_obj.format_specific
+            pixel_size_attrs["format_specific_metadata"] = (
+                comprehensive_metadata_obj.format_specific
+            )
 
         if comprehensive_metadata_obj.acquisition_params:
-            pixel_size_attrs[
-                "acquisition_parameters"
-            ] = comprehensive_metadata_obj.acquisition_params
+            pixel_size_attrs["acquisition_parameters"] = (
+                comprehensive_metadata_obj.acquisition_params
+            )
 
         if comprehensive_metadata_obj.instrument_info:
-            pixel_size_attrs[
-                "instrument_information"
-            ] = comprehensive_metadata_obj.instrument_info
+            pixel_size_attrs["instrument_information"] = (
+                comprehensive_metadata_obj.instrument_info
+            )
 
         # Update SpatialData attributes
         metadata.attrs.update(pixel_size_attrs)
@@ -397,7 +413,9 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
 
             # Add pixel size detection provenance if available
             if self._pixel_size_detection_info is not None:
-                metadata_dict["pixel_size_provenance"] = self._pixel_size_detection_info
+                metadata_dict["pixel_size_provenance"] = (
+                    self._pixel_size_detection_info
+                )
 
             # Add conversion options used
             metadata_dict["conversion_options"] = {
@@ -410,7 +428,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             metadata.metadata = metadata_dict
 
             logging.info(
-                f"Comprehensive metadata persisted to SpatialData with {len(metadata_dict)} top-level sections"
+                f"Comprehensive metadata persisted to SpatialData with "
+                f"{len(metadata_dict)} top-level sections"
             )
 
     @abstractmethod
