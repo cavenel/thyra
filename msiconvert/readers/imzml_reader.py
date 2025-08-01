@@ -25,8 +25,7 @@ class ImzMLReader(BaseMSIReader):
         cache_coordinates: bool = True,
         **kwargs,
     ) -> None:
-        """
-        Initialize an ImzML reader.
+        """Initialize an ImzML reader.
 
         Args:
             data_path: Path to the imzML file
@@ -60,15 +59,12 @@ class ImzMLReader(BaseMSIReader):
         """Guarantee parser is initialized exactly once."""
         if not self._parser_initialized:
             if self.filepath is None:
-                raise ValueError(
-                    "No file path provided for parser initialization"
-                )
+                raise ValueError("No file path provided for parser initialization")
             self._initialize_parser(self.filepath)
             self._parser_initialized = True
 
     def _initialize_parser(self, imzml_path: Union[str, Path]) -> None:
-        """
-        Initialize the ImzML parser with the given path.
+        """Initialize the ImzML parser with the given path.
 
         Args:
             imzml_path: Path to the imzML file to parse
@@ -84,9 +80,7 @@ class ImzMLReader(BaseMSIReader):
         self.ibd_path = imzml_path.with_suffix(".ibd")
 
         if not self.ibd_path.exists():
-            raise ValueError(
-                f"Corresponding .ibd file not found for {imzml_path}"
-            )
+            raise ValueError(f"Corresponding .ibd file not found for {imzml_path}")
 
         # Open the .ibd file for reading
         self.ibd_file = open(self.ibd_path, mode="rb")
@@ -128,8 +122,7 @@ class ImzMLReader(BaseMSIReader):
             self._cache_all_coordinates()
 
     def _cache_all_coordinates(self) -> None:
-        """
-        Cache all coordinates for faster access.
+        """Cache all coordinates for faster access.
 
         Converts 1-based coordinates from imzML to 0-based coordinates for internal use.
         """
@@ -157,8 +150,7 @@ class ImzMLReader(BaseMSIReader):
         return ImzMLMetadataExtractor(self.parser, self.imzml_path)
 
     def get_common_mass_axis(self) -> NDArray[np.float64]:
-        """
-        Return the common mass axis composed of all unique m/z values.
+        """Return the common mass axis composed of all unique m/z values.
 
         For continuous mode, returns the m/z values from the first spectrum.
         For processed mode, collects all unique m/z values across spectra.
@@ -176,9 +168,7 @@ class ImzMLReader(BaseMSIReader):
             parser = cast(ImzMLParser, self.parser)
 
             if self.is_continuous:
-                logging.info(
-                    "Using m/z values from first spectrum (continuous mode)"
-                )
+                logging.info("Using m/z values from first spectrum (continuous mode)")
                 spectrum_data = parser.getspectrum(0)  # type: ignore
                 if spectrum_data is None or len(spectrum_data) < 1:  # type: ignore
                     raise ValueError("Could not get first spectrum")
@@ -213,16 +203,12 @@ class ImzMLReader(BaseMSIReader):
                             if mzs.size > 0:
                                 all_mzs.append(mzs)
                         except Exception as e:
-                            logging.warning(
-                                f"Error getting spectrum {idx}: {e}"
-                            )
+                            logging.warning(f"Error getting spectrum {idx}: {e}")
                         pbar.update(1)
 
                 if not all_mzs:
                     # No spectra found - raise exception instead of returning empty array
-                    raise ValueError(
-                        "No spectra found to build common mass axis"
-                    )
+                    raise ValueError("No spectra found to build common mass axis")
 
                 try:
                     combined_mzs = np.concatenate(all_mzs)
@@ -238,9 +224,7 @@ class ImzMLReader(BaseMSIReader):
                     )
                 except Exception as e:
                     # Re-raise with more context
-                    raise ValueError(
-                        f"Error creating common mass axis: {e}"
-                    ) from e
+                    raise ValueError(f"Error creating common mass axis: {e}") from e
 
         # Return the common mass axis
         return self._common_mass_axis
@@ -250,8 +234,7 @@ class ImzMLReader(BaseMSIReader):
         None,
         None,
     ]:
-        """
-        Iterate through spectra with progress monitoring and batch processing.
+        """Iterate through spectra with progress monitoring and batch processing.
 
         Maps m/z values to the common mass axis using searchsorted for accurate
         representation in the output data structures.
@@ -315,9 +298,7 @@ class ImzMLReader(BaseMSIReader):
 
                         pbar.update(1)
                     except Exception as e:
-                        logging.warning(
-                            f"Error processing spectrum {idx}: {e}"
-                        )
+                        logging.warning(f"Error processing spectrum {idx}: {e}")
                         pbar.update(1)
             else:
                 # Process in batches
@@ -347,14 +328,11 @@ class ImzMLReader(BaseMSIReader):
 
                             pbar.update(1)
                         except Exception as e:
-                            logging.warning(
-                                f"Error processing spectrum {idx}: {e}"
-                            )
+                            logging.warning(f"Error processing spectrum {idx}: {e}")
                             pbar.update(1)
 
     def read(self) -> Dict[str, Any]:
-        """
-        Read the entire imzML file and return a structured data dictionary.
+        """Read the entire imzML file and return a structured data dictionary.
 
         Returns:
             Dict containing:
@@ -421,8 +399,7 @@ class ImzMLReader(BaseMSIReader):
 
     @property
     def n_spectra(self) -> int:
-        """
-        Return the total number of spectra in the dataset.
+        """Return the total number of spectra in the dataset.
 
         Returns:
             Total number of spectra (efficient implementation using parser)

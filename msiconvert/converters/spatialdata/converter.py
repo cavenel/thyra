@@ -6,10 +6,7 @@ from typing import Any, Dict, Optional
 
 from ...core.base_reader import BaseMSIReader
 from ...core.registry import register_converter
-from .base_spatialdata_converter import (
-    SPATIALDATA_AVAILABLE,
-    _import_error_msg,
-)
+from .base_spatialdata_converter import SPATIALDATA_AVAILABLE, _import_error_msg
 from .spatialdata_2d_converter import SpatialData2DConverter
 from .spatialdata_3d_converter import SpatialData3DConverter
 
@@ -30,8 +27,7 @@ class SpatialDataConverter:
         pixel_size_detection_info: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ):
-        """
-        Create appropriate converter based on handle_3d parameter and data dimensions.
+        """Create appropriate converter based on handle_3d parameter and data dimensions.
 
         Args:
             reader: MSI data reader

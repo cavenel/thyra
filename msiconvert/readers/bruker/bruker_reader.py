@@ -1,5 +1,4 @@
-"""
-Bruker reader implementation combining best features from all implementations.
+"""Bruker reader implementation combining best features from all implementations.
 
 This module provides a high-performance, memory-efficient reader for Bruker TSF/TDF
 data formats with lazy loading, intelligent caching, and comprehensive error handling.
@@ -38,8 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 def build_raw_mass_axis(spectra_iterator, progress_callback=None):
-    """
-    Build raw mass axis from spectra iterator.
+    """Build raw mass axis from spectra iterator.
 
     Raw Mass axis in case the user wants the full data. Not recommended for normal use.
     Future interpolation module will create optimized mass axis using min/max mass + bin width.
@@ -69,8 +67,7 @@ def _get_frame_coordinates(
     frame_id: int,
     coordinate_offsets: Optional[Tuple[int, int, int]] = None,
 ) -> Optional[Tuple[int, int, int]]:
-    """
-    Get normalized coordinates for a specific frame directly from database.
+    """Get normalized coordinates for a specific frame directly from database.
 
     Args:
         db_path: Path to the SQLite database file
@@ -113,8 +110,7 @@ def _get_frame_coordinates(
 
 
 def _get_frame_count(db_path: Path) -> int:
-    """
-    Get total frame count directly from database.
+    """Get total frame count directly from database.
 
     Args:
         db_path: Path to the SQLite database file
@@ -134,8 +130,7 @@ def _get_frame_count(db_path: Path) -> int:
 
 @register_reader("bruker")
 class BrukerReader(BaseMSIReader):
-    """
-    Bruker reader for TSF/TDF data formats.
+    """Bruker reader for TSF/TDF data formats.
 
     Features:
     - Sequential spectrum iteration
@@ -155,8 +150,7 @@ class BrukerReader(BaseMSIReader):
         progress_callback: Optional[callable] = None,
         **kwargs,
     ):
-        """
-        Initialize the Bruker reader.
+        """Initialize the Bruker reader.
 
         Args:
             data_path: Path to Bruker .d directory
@@ -203,19 +197,13 @@ class BrukerReader(BaseMSIReader):
     def _validate_data_path(self) -> None:
         """Validate the data path and check for required files."""
         if not self.data_path.exists():
-            raise FileFormatError(
-                f"Data path does not exist: {self.data_path}"
-            )
+            raise FileFormatError(f"Data path does not exist: {self.data_path}")
 
         if not self.data_path.is_dir():
-            raise FileFormatError(
-                f"Data path must be a directory: {self.data_path}"
-            )
+            raise FileFormatError(f"Data path must be a directory: {self.data_path}")
 
         if not self.data_path.suffix == ".d":
-            raise FileFormatError(
-                f"Expected .d directory, got: {self.data_path}"
-            )
+            raise FileFormatError(f"Expected .d directory, got: {self.data_path}")
 
     def _detect_file_type(self) -> None:
         """Detect whether this is TSF or TDF data."""
@@ -261,9 +249,7 @@ class BrukerReader(BaseMSIReader):
                 str(self.data_path), self.use_recalibrated_state
             )
 
-            logger.info(
-                f"Successfully initialized {self.file_type.upper()} SDK"
-            )
+            logger.info(f"Successfully initialized {self.file_type.upper()} SDK")
 
         except Exception as e:
             logger.error(f"Failed to initialize SDK: {e}")
@@ -293,8 +279,7 @@ class BrukerReader(BaseMSIReader):
         return BrukerMetadataExtractor(self.conn, self.data_path)
 
     def get_common_mass_axis(self) -> np.ndarray:
-        """
-        Return the common mass axis composed of all unique m/z values.
+        """Return the common mass axis composed of all unique m/z values.
 
         Returns:
             Array of unique m/z values in ascending order
@@ -320,18 +305,13 @@ class BrukerReader(BaseMSIReader):
             logger.warning("No m/z values found in dataset")
             return np.array([])
 
-        logger.info(
-            f"Built raw mass axis with {len(mass_axis)} unique m/z values"
-        )
+        logger.info(f"Built raw mass axis with {len(mass_axis)} unique m/z values")
         return mass_axis
 
     def iter_spectra(
         self, batch_size: Optional[int] = None
-    ) -> Generator[
-        Tuple[Tuple[int, int, int], np.ndarray, np.ndarray], None, None
-    ]:
-        """
-        Iterate through all spectra sequentially.
+    ) -> Generator[Tuple[Tuple[int, int, int], np.ndarray, np.ndarray], None, None]:
+        """Iterate through all spectra sequentially.
 
         Args:
             batch_size: Ignored, maintained for compatibility
@@ -344,9 +324,7 @@ class BrukerReader(BaseMSIReader):
 
     def _iter_spectra_raw(
         self,
-    ) -> Generator[
-        Tuple[Tuple[int, int, int], np.ndarray, np.ndarray], None, None
-    ]:
+    ) -> Generator[Tuple[Tuple[int, int, int], np.ndarray, np.ndarray], None, None]:
         """Raw spectrum iteration without batching."""
         frame_count = self._get_frame_count()
         coordinate_offsets = self._get_coordinate_offsets()
@@ -365,9 +343,7 @@ class BrukerReader(BaseMSIReader):
                         frame_id, coordinate_offsets
                     )
                     if coords is None:
-                        logger.warning(
-                            f"No coordinates found for frame {frame_id}"
-                        )
+                        logger.warning(f"No coordinates found for frame {frame_id}")
                         pbar.update(1)
                         continue
 
@@ -391,9 +367,7 @@ class BrukerReader(BaseMSIReader):
                         self.progress_callback(frame_id, frame_count)
 
                 except Exception as e:
-                    logger.warning(
-                        f"Error reading spectrum for frame {frame_id}: {e}"
-                    )
+                    logger.warning(f"Error reading spectrum for frame {frame_id}: {e}")
                     pbar.update(1)
                     continue
 
@@ -417,8 +391,7 @@ class BrukerReader(BaseMSIReader):
         frame_id: int,
         coordinate_offsets: Optional[Tuple[int, int, int]] = None,
     ) -> Optional[Tuple[int, int, int]]:
-        """
-        Get normalized coordinates for a specific frame using persistent connection.
+        """Get normalized coordinates for a specific frame using persistent connection.
 
         This avoids opening new SQLite connections for every frame.
 
@@ -455,14 +428,11 @@ class BrukerReader(BaseMSIReader):
             return (frame_id - 1, 0, 0)
 
         except Exception as e:
-            logger.warning(
-                f"Error getting coordinates for frame {frame_id}: {e}"
-            )
+            logger.warning(f"Error getting coordinates for frame {frame_id}: {e}")
             return None
 
     def _preload_frame_num_peaks(self) -> Dict[int, int]:
-        """
-        Preload NumPeaks values for all frames at initialization.
+        """Preload NumPeaks values for all frames at initialization.
 
         This optimization avoids the busy wait loop in SDK by providing exact
         buffer sizes for spectrum reading, reducing CPU usage from 100% to normal levels.
@@ -494,9 +464,7 @@ class BrukerReader(BaseMSIReader):
                         f"... and {invalid_count - 5} more invalid NumPeaks values"
                     )
 
-                memory_mb = (
-                    len(num_peaks_cache) * 2 / (1024 * 1024)
-                )  # uint16 = 2 bytes
+                memory_mb = len(num_peaks_cache) * 2 / (1024 * 1024)  # uint16 = 2 bytes
                 logger.info(
                     f"Cached NumPeaks for {len(num_peaks_cache)} frames ({memory_mb:.1f}MB)"
                 )
@@ -531,8 +499,7 @@ class BrukerReader(BaseMSIReader):
 
     @property
     def shape(self) -> Tuple[int, int, int]:
-        """
-        Get spatial dimensions (pixel grid) from metadata extractor.
+        """Get spatial dimensions (pixel grid) from metadata extractor.
 
         Note: This is the spatial pixel grid, not the mass axis dimensions.
         Mass axis interpolation to common m/z values is handled during conversion.
@@ -545,8 +512,7 @@ class BrukerReader(BaseMSIReader):
 
     @property
     def mass_range(self) -> Tuple[float, float]:
-        """
-        Get mass range from metadata extractor.
+        """Get mass range from metadata extractor.
 
         Note: This is the acquisition mass range, not the final interpolated axis.
         The actual common mass axis for interpolation is built from all unique m/z values.
@@ -567,8 +533,7 @@ class BrukerReader(BaseMSIReader):
 
     @property
     def n_spectra(self) -> int:
-        """
-        Return the total number of spectra in the dataset.
+        """Return the total number of spectra in the dataset.
 
         Returns:
             Total number of frames (efficient implementation using cached frame count)
