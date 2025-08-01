@@ -53,10 +53,28 @@ jobs:
 
     - name: Run complexity monitoring
       run: |
+        echo "Starting complexity monitoring..."
+        echo "Current directory: $(pwd)"
+        echo "Python version: $(poetry run python --version)"
+        echo "Files in scripts/: $(ls -la scripts/)"
+
+        echo "Running complexity monitor..."
+        set +e  # Don't exit on error so we can capture the exit code
         poetry run python scripts/complexity_monitor.py \
           --threshold 10 \
           --save \
           --trends
+        COMPLEXITY_EXIT_CODE=$?
+        echo "Complexity monitor exit code: $COMPLEXITY_EXIT_CODE"
+
+        if [ $COMPLEXITY_EXIT_CODE -eq 0 ]; then
+          echo "SUCCESS: No complexity violations found"
+        else
+          echo "FAILURE: Complexity violations found (exit code: $COMPLEXITY_EXIT_CODE)"
+        fi
+
+        # Always exit 0 here since we use continue-on-error
+        exit $COMPLEXITY_EXIT_CODE
       continue-on-error: true
       id: complexity-check
 
@@ -148,11 +166,16 @@ jobs:
           if [ -f reports/complexity/*.json ]; then
             latest_report=$(ls -t reports/complexity/*.json | head -1)
             echo "Report contents:"
-            cat "$latest_report" | head -20
+            cat "$latest_report"
           fi
         else
           echo "No complexity reports generated (likely no violations found)"
         fi
+
+        echo ""
+        echo "DIRECT COMPLEXITY CHECK (for debugging):"
+        echo "================================="
+        poetry run python scripts/complexity_monitor.py --threshold 10 --no-save --quiet || true
 
     - name: Set complexity check status
       run: |
