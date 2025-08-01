@@ -9,6 +9,12 @@ on:
     # Run weekly on Sundays at 2 AM UTC
     - cron: '0 2 * * 0'
 
+# Add explicit permissions for the workflow
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   complexity-check:
     runs-on: ubuntu-latest
@@ -65,7 +71,9 @@ jobs:
     - name: Comment on PR with complexity results
       if: github.event_name == 'pull_request'
       uses: actions/github-script@v7
+      continue-on-error: true
       with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
         script: |
           const fs = require('fs');
           const path = require('path');
@@ -116,12 +124,35 @@ jobs:
             comment += '\n✅ **Excellent!** No complexity violations found.';
           }
 
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: comment
-          });
+          try {
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+            console.log('✅ Successfully posted complexity report comment');
+          } catch (error) {
+            console.log('⚠️ Failed to post PR comment (permissions issue):', error.message);
+            console.log('📊 Complexity report is still available in workflow artifacts');
+          }
+
+    - name: Output complexity report to workflow log
+      if: always()
+      run: |
+        echo "📊 COMPLEXITY MONITORING SUMMARY"
+        echo "================================="
+        if [ -d "reports/complexity" ] && [ "$(ls -A reports/complexity)" ]; then
+          echo "Latest complexity report:"
+          ls -la reports/complexity/ | head -5
+          if [ -f reports/complexity/*.json ]; then
+            latest_report=$(ls -t reports/complexity/*.json | head -1)
+            echo "Report contents:"
+            cat "$latest_report" | head -20
+          fi
+        else
+          echo "No complexity reports generated (likely no violations found)"
+        fi
 
     - name: Set complexity check status
       run: |
