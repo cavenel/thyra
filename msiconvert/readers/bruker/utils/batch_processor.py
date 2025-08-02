@@ -7,7 +7,7 @@ batches with progress tracking and memory management.
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Optional
 
 import numpy as np
 from tqdm import tqdm
@@ -118,7 +118,8 @@ class BatchProcessor:
         if batch_size is None:
             # Use a reasonable default if no size provided
             batch_size = min(
-                self.max_batch_size, max(self.min_batch_size, total_items // 10)
+                self.max_batch_size,
+                max(self.min_batch_size, total_items // 10),
             )
 
         batches = []
@@ -176,10 +177,10 @@ class BatchProcessor:
 
         # Setup progress tracking
         pbar = tqdm(
-            total=total_spectra, 
-            desc="Processing batches", 
+            total=total_spectra,
+            desc="Processing batches",
             unit="spectrum",
-            disable=getattr(self, "_quiet_mode", False)
+            disable=getattr(self, "_quiet_mode", False),
         )
 
         try:
@@ -265,10 +266,10 @@ class BatchProcessor:
             batch_size = initial_batch_size
 
         pbar = tqdm(
-            total=total_spectra, 
-            desc="Adaptive processing", 
+            total=total_spectra,
+            desc="Adaptive processing",
             unit="spectrum",
-            disable=getattr(self, "_quiet_mode", False)
+            disable=getattr(self, "_quiet_mode", False),
         )
 
         try:
@@ -332,7 +333,10 @@ class BatchProcessor:
             pbar.close()
 
     def process_with_memory_monitoring(
-        self, items: List[Any], processor_func: Callable, memory_limit_mb: float = None
+        self,
+        items: List[Any],
+        processor_func: Callable,
+        memory_limit_mb: float = None,
     ) -> Iterator[Any]:
         """
         Process items with memory monitoring and adaptive batch sizing.
@@ -345,6 +349,37 @@ class BatchProcessor:
         Yields:
             Results from processor_func for each batch
         """
+        # Setup memory monitoring
+        process, memory_limit_mb = self._setup_memory_monitoring(memory_limit_mb)
+
+        # Initialize processing variables
+        total_items = len(items)
+        batch_size = self.min_batch_size
+        processed = 0
+
+        pbar = tqdm(
+            total=total_items,
+            desc="Memory-aware processing",
+            unit="item",
+            disable=getattr(self, "_quiet_mode", False),
+        )
+
+        try:
+            yield from self._process_items_with_monitoring(
+                items,
+                processor_func,
+                process,
+                memory_limit_mb,
+                batch_size,
+                processed,
+                total_items,
+                pbar,
+            )
+        finally:
+            pbar.close()
+
+    def _setup_memory_monitoring(self, memory_limit_mb):
+        """Setup memory monitoring with psutil if available."""
         try:
             import psutil
 
@@ -360,64 +395,84 @@ class BatchProcessor:
             process = psutil.Process()
         else:
             process = None
-        total_items = len(items)
-        batch_size = self.min_batch_size
-        processed = 0
 
-        pbar = tqdm(
-            total=total_items, 
-            desc="Memory-aware processing", 
-            unit="item",
-            disable=getattr(self, "_quiet_mode", False)
+        return process, memory_limit_mb
+
+    def _process_items_with_monitoring(
+        self,
+        items,
+        processor_func,
+        process,
+        memory_limit_mb,
+        batch_size,
+        processed,
+        total_items,
+        pbar,
+    ):
+        """Process items with memory monitoring and adaptive sizing."""
+        while processed < total_items:
+            # Check and adjust batch size based on memory
+            memory_mb = self._get_current_memory(process)
+            batch_size = self._adjust_batch_size(memory_mb, memory_limit_mb, batch_size)
+
+            # Create and process batch
+            batch, end_idx = self._create_batch(
+                items, processed, batch_size, total_items
+            )
+            if not batch:
+                break
+
+            result = self._process_single_batch(
+                batch, processor_func, processed, end_idx, memory_mb
+            )
+            yield result
+
+            # Update progress
+            processed += len(batch)
+            pbar.update(len(batch))
+            self._update_memory_stats(memory_mb)
+
+    def _get_current_memory(self, process):
+        """Get current memory usage."""
+        if process:
+            return process.memory_info().rss / 1024 / 1024
+        return 100.0  # Fallback value
+
+    def _adjust_batch_size(self, memory_mb, memory_limit_mb, batch_size):
+        """Adjust batch size based on memory usage."""
+        if memory_mb > memory_limit_mb * 0.8:  # 80% of limit
+            batch_size = max(self.min_batch_size, batch_size // 2)
+            logger.warning(
+                f"High memory usage ({memory_mb:.1f}MB), "
+                f"reducing batch size to {batch_size}"
+            )
+        elif memory_mb < memory_limit_mb * 0.4:  # 40% of limit
+            batch_size = min(self.max_batch_size, batch_size * 2)
+        return batch_size
+
+    def _create_batch(self, items, processed, batch_size, total_items):
+        """Create a batch of items to process."""
+        end_idx = min(processed + batch_size, total_items)
+        batch = items[processed:end_idx]
+        return batch, end_idx
+
+    def _process_single_batch(
+        self, batch, processor_func, processed, end_idx, memory_mb
+    ):
+        """Process a single batch."""
+        batch_info = BatchInfo(
+            batch_id=processed // len(batch) if batch else 0,
+            start_index=processed,
+            end_index=end_idx,
+            size=len(batch),
+            estimated_memory_mb=memory_mb,
         )
+        return processor_func(batch, batch_info)
 
-        try:
-            while processed < total_items:
-                # Check current memory usage
-                if PSUTIL_AVAILABLE and process:
-                    memory_mb = process.memory_info().rss / 1024 / 1024
-                else:
-                    memory_mb = 100.0  # Fallback value
-
-                # Adjust batch size based on memory usage
-                if memory_mb > memory_limit_mb * 0.8:  # 80% of limit
-                    batch_size = max(self.min_batch_size, batch_size // 2)
-                    logger.warning(
-                        f"High memory usage ({memory_mb:.1f}MB), "
-                        f"reducing batch size to {batch_size}"
-                    )
-                elif memory_mb < memory_limit_mb * 0.4:  # 40% of limit
-                    batch_size = min(self.max_batch_size, batch_size * 2)
-
-                # Create batch
-                end_idx = min(processed + batch_size, total_items)
-                batch = items[processed:end_idx]
-
-                if not batch:
-                    break
-
-                # Process batch
-                batch_info = BatchInfo(
-                    batch_id=processed // batch_size,
-                    start_index=processed,
-                    end_index=end_idx,
-                    size=len(batch),
-                    estimated_memory_mb=memory_mb,
-                )
-
-                result = processor_func(batch, batch_info)
-                yield result
-
-                # Update statistics
-                processed += len(batch)
-                pbar.update(len(batch))
-
-                # Update peak memory
-                if memory_mb > self._stats["peak_memory_mb"]:
-                    self._stats["peak_memory_mb"] = memory_mb
-
-        finally:
-            pbar.close()
+    def _update_memory_stats(self, memory_mb):
+        """Update peak memory statistics."""
+        if memory_mb > self._stats["peak_memory_mb"]:
+            self._stats["peak_memory_mb"] = memory_mb
 
     def get_stats(self) -> Dict[str, Any]:
         """Get batch processing statistics."""

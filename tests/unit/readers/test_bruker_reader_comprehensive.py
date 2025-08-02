@@ -10,21 +10,15 @@ This test suite validates all functionality of the reader including:
 """
 
 import logging
-import os
-import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict
 
 import numpy as np
 
 # Import the reader from the proper location
 from msiconvert.readers.bruker.bruker_reader import BrukerReader
-from msiconvert.utils.bruker_exceptions import (
-    BrukerReaderError,
-    DataError,
-    SDKError,
-)
+from msiconvert.utils.bruker_exceptions import BrukerReaderError
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +37,9 @@ class BrukerReaderTester:
         self.results = {}
         self.errors = []
 
-        print(f"Initializing BrukerReaderTester with data: {self.test_data_path}")
+        print(
+            f"Initializing BrukerReaderTester with data: {self.test_data_path}"
+        )
 
     def run_all_tests(self) -> Dict[str, Any]:
         """
@@ -87,7 +83,9 @@ class BrukerReaderTester:
                     "error": None,
                 }
 
-                print(f"✅ {test_name}: PASSED ({(end_time - start_time) * 1000:.1f}ms)")
+                print(
+                    f"✅ {test_name}: PASSED ({(end_time - start_time) * 1000:.1f}ms)"
+                )
 
             except Exception as e:
                 end_time = time.time()
@@ -111,7 +109,9 @@ class BrukerReaderTester:
     def test_initialization(self) -> Dict[str, Any]:
         """Test basic reader initialization."""
         reader = BrukerReader(
-            data_path=self.test_data_path, cache_coordinates=True, memory_limit_gb=2.0
+            data_path=self.test_data_path,
+            cache_coordinates=True,
+            memory_limit_gb=2.0,
         )
 
         # Verify basic properties
@@ -122,7 +122,10 @@ class BrukerReaderTester:
 
         reader.close()
 
-        return {"file_type": reader.file_type, "data_path": str(reader.data_path)}
+        return {
+            "file_type": reader.file_type,
+            "data_path": str(reader.data_path),
+        }
 
     def test_data_path_validation(self) -> Dict[str, Any]:
         """Test data path validation."""
@@ -147,7 +150,12 @@ class BrukerReaderTester:
             metadata = reader.get_metadata()
 
             # Verify essential metadata fields
-            required_fields = ["source", "file_type", "frame_count", "is_maldi"]
+            required_fields = [
+                "source",
+                "file_type",
+                "frame_count",
+                "is_maldi",
+            ]
             for field in required_fields:
                 assert field in metadata, f"Missing metadata field: {field}"
 
@@ -164,7 +172,9 @@ class BrukerReaderTester:
             dimensions = reader.get_dimensions()
 
             assert len(dimensions) == 3, "Dimensions should be 3-tuple"
-            assert all(d > 0 for d in dimensions), "All dimensions should be positive"
+            assert all(
+                d > 0 for d in dimensions
+            ), "All dimensions should be positive"
 
             x, y, z = dimensions
 
@@ -178,13 +188,17 @@ class BrukerReaderTester:
 
     def test_coordinate_access(self) -> Dict[str, Any]:
         """Test coordinate caching and access."""
-        with BrukerReader(self.test_data_path, cache_coordinates=True) as reader:
+        with BrukerReader(
+            self.test_data_path, cache_coordinates=True
+        ) as reader:
             # Test coordinate access
             coord_cache = reader.coordinate_cache
 
             # Test getting a single coordinate
             coord = coord_cache.get_coordinate(1)
-            assert coord is not None, "Should be able to get coordinate for frame 1"
+            assert (
+                coord is not None
+            ), "Should be able to get coordinate for frame 1"
             assert len(coord) == 3, "Coordinate should be 3-tuple"
 
             # Test batch coordinate access
@@ -239,9 +253,13 @@ class BrukerReaderTester:
         with BrukerReader(self.test_data_path) as reader:
             mass_axis = reader.get_common_mass_axis()
 
-            assert isinstance(mass_axis, np.ndarray), "Mass axis should be numpy array"
+            assert isinstance(
+                mass_axis, np.ndarray
+            ), "Mass axis should be numpy array"
             assert len(mass_axis) > 0, "Mass axis should not be empty"
-            assert np.all(np.diff(mass_axis) >= 0), "Mass axis should be sorted"
+            assert np.all(
+                np.diff(mass_axis) >= 0
+            ), "Mass axis should be sorted"
 
             return {
                 "mass_axis_length": len(mass_axis),
@@ -250,13 +268,13 @@ class BrukerReaderTester:
                 "mass_range": float(np.max(mass_axis) - np.min(mass_axis)),
             }
 
-    def test_spectrum_reading(self) -> Dict[str, Any]:
+    def test_spectrum_reading_simple(self) -> Dict[str, Any]:
         """Test spectrum reading without memory management complexity."""
         with BrukerReader(self.test_data_path) as reader:
             # Read some spectra to test iteration
             spectrum_count = 0
             total_peaks = 0
-            
+
             for coords, mzs, intensities in reader.iter_spectra():
                 spectrum_count += 1
                 total_peaks += len(mzs)
@@ -266,7 +284,9 @@ class BrukerReaderTester:
             return {
                 "spectrum_count": spectrum_count,
                 "total_peaks": total_peaks,
-                "avg_peaks_per_spectrum": total_peaks / spectrum_count if spectrum_count > 0 else 0,
+                "avg_peaks_per_spectrum": (
+                    total_peaks / spectrum_count if spectrum_count > 0 else 0
+                ),
             }
 
     def test_sequential_processing(self) -> Dict[str, Any]:
@@ -286,8 +306,9 @@ class BrukerReaderTester:
             return {
                 "spectra_processed": spectrum_count,
                 "duration_ms": (end_time - start_time) * 1000,
-                "spectra_per_second": spectrum_count / max(0.001, end_time - start_time),
-                "note": "batch_size parameter ignored in implementation"
+                "spectra_per_second": spectrum_count
+                / max(0.001, end_time - start_time),
+                "note": "batch_size parameter ignored in implementation",
             }
 
     def test_performance(self) -> Dict[str, Any]:
@@ -362,7 +383,9 @@ class BrukerReaderTester:
         print(f"{'=' * 80}")
 
         total_tests = len(self.results)
-        passed_tests = sum(1 for r in self.results.values() if r["status"] == "PASSED")
+        passed_tests = sum(
+            1 for r in self.results.values() if r["status"] == "PASSED"
+        )
         failed_tests = total_tests - passed_tests
 
         print(f"Total Tests: {total_tests}")
@@ -385,11 +408,15 @@ class BrukerReaderTester:
 def main():
     """Main test function."""
     # Test data path - update this to your actual test data
-    test_data_path = r"C:\Users\tvisv\Downloads\MSIConverter\20231109_PEA_NEDC_bruker.d"
+    test_data_path = (
+        r"C:\Users\tvisv\Downloads\MSIConverter\20231109_PEA_NEDC_bruker.d"
+    )
 
     if not Path(test_data_path).exists():
         print(f"❌ Test data not found at: {test_data_path}")
-        print("Please update the test_data_path variable with the correct path.")
+        print(
+            "Please update the test_data_path variable with the correct path."
+        )
         return
 
     print(f"Using test data: {test_data_path}")

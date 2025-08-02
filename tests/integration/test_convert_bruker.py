@@ -2,6 +2,7 @@
 Integration tests for converting Bruker files to various formats.
 These tests will be skipped if Bruker dependencies are not available.
 """
+
 import sys
 
 # Skip all tests if Bruker DLL/shared library is not available
@@ -35,9 +36,11 @@ class TestBrukerConversion:
         "msiconvert.readers.bruker_reader.BrukerReader._find_dll_path",
         return_value=Path("mock_timsdata.dll"),
     )
-    @ patch("ctypes.windll", new_callable=MagicMock) if sys.platform.startswith(
-        "win32"
-    ) else patch("ctypes.cdll", new_callable=MagicMock)
+    @(
+        patch("ctypes.windll", new_callable=MagicMock)
+        if sys.platform.startswith("win32")
+        else patch("ctypes.cdll", new_callable=MagicMock)
+    )
     @patch("sqlite3.connect")
     def test_detect_bruker_format(
         self, mock_sqlite3, mock_dll, mock_find_dll_path, mock_bruker_data_dir
@@ -50,19 +53,23 @@ class TestBrukerConversion:
         assert detected_format == "bruker"
 
     @pytest.mark.skipif(
-        not pytest.importorskip("spatialdata", reason="SpatialData not installed"),
+        not pytest.importorskip(
+            "spatialdata", reason="SpatialData not installed"
+        ),
         reason="SpatialData not installed",
     )
-    @ patch("ctypes.windll", new_callable=MagicMock) if sys.platform.startswith(
-        "win32"
-    ) else patch("ctypes.cdll", new_callable=MagicMock)
+    @(
+        patch("ctypes.windll", new_callable=MagicMock)
+        if sys.platform.startswith("win32")
+        else patch("ctypes.cdll", new_callable=MagicMock)
+    )
     @patch("sqlite3.connect")
     def test_convert_to_spatialdata(
         self, mock_sqlite3, mock_dll, mock_bruker_data_dir, temp_dir
     ):
         """Test converting Bruker to SpatialData format."""
         # Skip if SpatialData is not available
-        spatialdata = pytest.importorskip("spatialdata")
+        pytest.importorskip("spatialdata")
 
         # Setup DLL mock
         dll_mock = MagicMock()
@@ -113,7 +120,9 @@ class TestBrukerConversion:
         mock_cursor.execute.side_effect = execute_side_effect
 
         # Patch both the BrukerReader initialization and the iter_spectra method
-        with patch("msiconvert.readers.bruker_reader.BrukerReader._preload_metadata"):
+        with patch(
+            "msiconvert.readers.bruker_reader.BrukerReader._preload_metadata"
+        ):
             # Create a mock for the BrukerReader class that will be instantiated
             mock_reader = MagicMock()
             mock_reader.get_common_mass_axis.return_value = np.array(
@@ -179,13 +188,18 @@ class TestBrukerConversion:
         "msiconvert.readers.bruker_reader.BrukerReader._find_dll_path",
         return_value=None,
     )
-    @patch("msiconvert.readers.bruker_reader.BrukerReader.__init__", return_value=None)
+    @patch(
+        "msiconvert.readers.bruker_reader.BrukerReader.__init__",
+        return_value=None,
+    )
     def test_bruker_reader_dll_not_found(
         self, mock_init, mock_find_dll_path, mock_bruker_data_dir
     ):
         """Test that BrukerReader raises RuntimeError if DLL is not found."""
         reader = BrukerReader(mock_bruker_data_dir)
-        with pytest.raises(RuntimeError, match="Bruker DLL/shared library not found"):
+        with pytest.raises(
+            RuntimeError, match="Bruker DLL/shared library not found"
+        ):
             reader._load_dll()
 
     def test_spatialdata_integration(self):

@@ -1,0 +1,187 @@
+name: Complexity Monitoring
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+
+# Add explicit permissions for the workflow
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  complexity-check:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - name: Load cached venv
+      id: cached-poetry-dependencies
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
+    - name: Install dependencies
+      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+      run: poetry install --no-interaction --no-root
+
+    - name: Install project
+      run: poetry install --no-interaction
+
+    - name: Install click for monitoring script
+      run: poetry add --group dev click
+
+    - name: Run complexity monitoring
+      run: |
+        echo "Starting complexity monitoring..."
+        echo "Current directory: $(pwd)"
+        echo "Python version: $(poetry run python --version)"
+        echo "Files in scripts/: $(ls -la scripts/)"
+
+        echo "Running complexity monitor..."
+        set +e  # Don't exit on error so we can capture the exit code
+        poetry run python scripts/complexity_monitor.py \
+          --threshold 10 \
+          --save \
+          --trends
+        COMPLEXITY_EXIT_CODE=$?
+        echo "Complexity monitor exit code: $COMPLEXITY_EXIT_CODE"
+
+        if [ $COMPLEXITY_EXIT_CODE -eq 0 ]; then
+          echo "SUCCESS: No complexity violations found"
+        else
+          echo "FAILURE: Complexity violations found (exit code: $COMPLEXITY_EXIT_CODE)"
+        fi
+
+        # Always exit 0 here since we use continue-on-error
+        exit $COMPLEXITY_EXIT_CODE
+      continue-on-error: true
+      id: complexity-check
+
+    - name: Upload complexity reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: complexity-reports
+        path: reports/complexity/
+        retention-days: 30
+
+    - name: Comment on PR with complexity results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      continue-on-error: true
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+
+          // Find the latest complexity report
+          const reportsDir = 'reports/complexity/';
+          if (!fs.existsSync(reportsDir)) {
+            console.log('No complexity reports found');
+            return;
+          }
+
+          const files = fs.readdirSync(reportsDir)
+            .filter(f => f.startsWith('complexity_report_'))
+            .sort()
+            .reverse();
+
+          if (files.length === 0) {
+            console.log('No complexity report files found');
+            return;
+          }
+
+          const latestReport = JSON.parse(
+            fs.readFileSync(path.join(reportsDir, files[0]), 'utf8')
+          );
+
+          let comment = '## Complexity Monitoring Report\n\n';
+          comment += `**Threshold:** ${latestReport.complexity_distribution ? '10' : 'N/A'}\n`;
+          comment += `**Total Violations:** ${latestReport.total_violations}\n`;
+
+          if (latestReport.total_violations > 0) {
+            comment += `**Average Complexity:** ${latestReport.average_complexity}\n`;
+            comment += `**Maximum Complexity:** ${latestReport.max_complexity}\n\n`;
+
+            comment += '### Complexity Distribution\n';
+            for (const [category, count] of Object.entries(latestReport.complexity_distribution)) {
+              comment += `- ${category}: ${count}\n`;
+            }
+
+            comment += '\n### Top Complex Functions\n';
+            const topFunctions = latestReport.high_complexity_functions.slice(0, 5);
+            for (let i = 0; i < topFunctions.length; i++) {
+              const func = topFunctions[i];
+              comment += `${i + 1}. \`${func.file}:${func.line}\` - ${func.function} (${func.complexity})\n`;
+            }
+
+            comment += '\n> **Warning:** Consider refactoring functions with complexity > 15 for better maintainability.';
+          } else {
+            comment += '\n**Excellent!** No complexity violations found.';
+          }
+
+          try {
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+            console.log('SUCCESS: Successfully posted complexity report comment');
+          } catch (error) {
+            console.log('WARNING: Failed to post PR comment (permissions issue):', error.message);
+            console.log('INFO: Complexity report is still available in workflow artifacts');
+          }
+
+    - name: Output complexity report to workflow log
+      if: always()
+      run: |
+        echo "COMPLEXITY MONITORING SUMMARY"
+        echo "================================="
+        if [ -d "reports/complexity" ] && [ "$(ls -A reports/complexity)" ]; then
+          echo "Latest complexity report:"
+          ls -la reports/complexity/ | head -5
+          if [ -f reports/complexity/*.json ]; then
+            latest_report=$(ls -t reports/complexity/*.json | head -1)
+            echo "Report contents:"
+            cat "$latest_report"
+          fi
+        else
+          echo "No complexity reports generated (likely no violations found)"
+        fi
+
+        echo ""
+        echo "DIRECT COMPLEXITY CHECK (for debugging):"
+        echo "================================="
+        poetry run python scripts/complexity_monitor.py --threshold 10 --no-save --quiet || true
+
+    - name: Set complexity check status
+      run: |
+        if [ "${{ steps.complexity-check.outcome }}" = "failure" ]; then
+          echo "FAILED: Complexity check failed - violations found"
+          exit 1
+        else
+          echo "PASSED: Complexity check passed"
+        fi

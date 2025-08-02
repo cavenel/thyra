@@ -11,6 +11,90 @@ from msiconvert.metadata.extractors.bruker_extractor import BrukerMetadataExtrac
 class TestBrukerMetadataExtractor:
     """Test BrukerMetadataExtractor functionality."""
 
+    def _get_default_sample_data(self):
+        """Get default test data for mock database."""
+        return {
+            "essential": (25.0, 25.0, 1.0, 0, 2, 0, 4, 400, 100.0, 1000.0),
+            "comprehensive": [
+                (1, 0, 0, 25.0, 25.0),
+                (2, 1, 0, 25.0, 25.0),
+                (3, 2, 0, 25.0, 25.0),
+                (4, 0, 4, 25.0, 25.0),
+            ],
+        }
+
+    def _create_execute_side_effect(self):
+        """Create execute side effect for mock cursor."""
+
+        def execute_side_effect(query, params=None):
+            # All queries return the cursor for chaining
+            return Mock()
+
+        return execute_side_effect
+
+    def _create_fetchone_side_effect(self, sample_data, mock_cursor):
+        """Create fetchone side effect for mock cursor."""
+
+        def fetchone_side_effect():
+            last_call = mock_cursor.execute.call_args
+            if not last_call or len(last_call) == 0:
+                return sample_data["essential"]
+
+            query = last_call[0][0] if last_call[0] else ""
+
+            if "LaserPower, LaserFrequency" in query:
+                return (100.0, 10.0, 25.0, 25.0, 50.0)
+            elif "BeamScanSizeX, BeamScanSizeY, SpotSize" in query:
+                return sample_data.get("laser_info", (25.0, 25.0, 1.0))
+            elif "MIN(XIndexPos)" in query and "COUNT(*)" in query:
+                return (0, 2, 0, 4, 400)
+
+            return sample_data["essential"]
+
+        return fetchone_side_effect
+
+    def _get_imaging_bounds_data(self):
+        """Get imaging bounds test data."""
+        return [
+            ("ImagingAreaMinXIndexPos", "0"),
+            ("ImagingAreaMaxXIndexPos", "2"),
+            ("ImagingAreaMinYIndexPos", "0"),
+            ("ImagingAreaMaxYIndexPos", "4"),
+            ("MzAcqRangeLower", "100.0"),
+            ("MzAcqRangeUpper", "1000.0"),
+        ]
+
+    def _get_global_metadata_data(self):
+        """Get global metadata test data."""
+        return [
+            ("AcquisitionSoftware", "flexControl"),
+            ("AcquisitionSoftwareVersion", "3.4"),
+            ("InstrumentModel", "timsTOF fleX"),
+            ("LaserRepetitionRate", "2000"),
+            ("SampleName", "Test Sample"),
+        ]
+
+    def _create_fetchall_side_effect(self, sample_data, mock_cursor):
+        """Create fetchall side effect for mock cursor."""
+
+        def fetchall_side_effect():
+            last_call = mock_cursor.execute.call_args
+            if not last_call or len(last_call) == 0:
+                return sample_data["comprehensive"]
+
+            query = last_call[0][0] if last_call[0] else ""
+
+            if "GlobalMetadata" in query and "ImagingArea" in query:
+                return self._get_imaging_bounds_data()
+            elif "Id, SpotXPos, SpotYPos" in query:
+                return sample_data["comprehensive"]
+            elif "SELECT Key, Value FROM GlobalMetadata" in query:
+                return self._get_global_metadata_data()
+
+            return sample_data["comprehensive"]
+
+        return fetchall_side_effect
+
     def create_mock_connection(self, sample_data=None):
         """Create a mock database connection with test data."""
         mock_conn = Mock(spec=sqlite3.Connection)
@@ -18,80 +102,15 @@ class TestBrukerMetadataExtractor:
         mock_conn.cursor.return_value = mock_cursor
 
         if sample_data is None:
-            # Default test data for essential metadata
-            # min_x=0, max_x=2, min_y=0, max_y=4 -> dimensions = (3, 5, 1)
-            sample_data = {
-                "essential": (25.0, 25.0, 1.0, 0, 2, 0, 4, 400, 100.0, 1000.0),
-                "comprehensive": [
-                    (1, 0, 0, 25.0, 25.0),
-                    (2, 1, 0, 25.0, 25.0),
-                    (3, 2, 0, 25.0, 25.0),
-                    (4, 0, 4, 25.0, 25.0),
-                ],
-            }
+            sample_data = self._get_default_sample_data()
 
-        def execute_side_effect(query, params=None):
-            if "BeamScanSizeX, BeamScanSizeY" in query and "MIN(" in query:
-                # Essential metadata query
-                return mock_cursor
-            elif "Id, SpotXPos, SpotYPos" in query:
-                # Comprehensive metadata query
-                return mock_cursor
-            elif "MaldiFrameLaserInfo" in query:
-                # Acquisition parameters query
-                return mock_cursor
-            else:
-                return mock_cursor
-
-        def fetchone_side_effect():
-            # Check which query was executed by looking at the last call
-            last_call = mock_cursor.execute.call_args
-            if last_call and len(last_call) > 0:
-                query = last_call[0][0] if last_call[0] else ""
-                if "LaserPower, LaserFrequency" in query:
-                    # Acquisition parameters query - return laser_power, laser_freq, beam_x, beam_y, spot_size
-                    return (100.0, 10.0, 25.0, 25.0, 50.0)
-                elif "BeamScanSizeX, BeamScanSizeY, SpotSize" in query:
-                    # Laser info query - return beam_x, beam_y, spot_size
-                    laser_result = sample_data.get("laser_info", (25.0, 25.0, 1.0))
-                    return laser_result
-                elif "MIN(XIndexPos)" in query and "COUNT(*)" in query:
-                    # Frame info query - return min_x, max_x, min_y, max_y, frame_count
-                    return (0, 2, 0, 4, 400)
-            return sample_data["essential"]
-
-        def fetchall_side_effect():
-            # Check which query was executed by looking at the last call
-            last_call = mock_cursor.execute.call_args
-            if last_call and len(last_call) > 0:
-                query = last_call[0][0] if last_call[0] else ""
-                if "GlobalMetadata" in query and "ImagingArea" in query:
-                    # Imaging bounds query - return key-value pairs
-                    return [
-                        ("ImagingAreaMinXIndexPos", "0"),
-                        ("ImagingAreaMaxXIndexPos", "2"),
-                        ("ImagingAreaMinYIndexPos", "0"),
-                        ("ImagingAreaMaxYIndexPos", "4"),
-                        ("MzAcqRangeLower", "100.0"),
-                        ("MzAcqRangeUpper", "1000.0"),
-                    ]
-                elif "Id, SpotXPos, SpotYPos" in query:
-                    # Comprehensive metadata query
-                    return sample_data["comprehensive"]
-                elif "SELECT Key, Value FROM GlobalMetadata" in query:
-                    # Global metadata query - return key-value pairs
-                    return [
-                        ("AcquisitionSoftware", "flexControl"),
-                        ("AcquisitionSoftwareVersion", "3.4"),
-                        ("InstrumentModel", "timsTOF fleX"),
-                        ("LaserRepetitionRate", "2000"),
-                        ("SampleName", "Test Sample"),
-                    ]
-            return sample_data["comprehensive"]
-
-        mock_cursor.execute.side_effect = execute_side_effect
-        mock_cursor.fetchone.side_effect = fetchone_side_effect
-        mock_cursor.fetchall.side_effect = fetchall_side_effect
+        mock_cursor.execute.side_effect = self._create_execute_side_effect()
+        mock_cursor.fetchone.side_effect = self._create_fetchone_side_effect(
+            sample_data, mock_cursor
+        )
+        mock_cursor.fetchall.side_effect = self._create_fetchall_side_effect(
+            sample_data, mock_cursor
+        )
 
         return mock_conn
 
@@ -113,7 +132,11 @@ class TestBrukerMetadataExtractor:
         extractor = BrukerMetadataExtractor(mock_conn, data_path)
         essential = extractor.get_essential()
 
-        assert essential.dimensions == (3, 5, 1)  # Calculated from coordinate bounds
+        assert essential.dimensions == (
+            3,
+            5,
+            1,
+        )  # Calculated from coordinate bounds
         assert essential.coordinate_bounds == (0, 2, 0, 4)
         assert essential.mass_range == (100.0, 1000.0)
         assert essential.pixel_size == (25.0, 25.0)
@@ -200,48 +223,41 @@ class TestBrukerMetadataExtractor:
         assert "frame_info" in comprehensive.raw_metadata
         assert len(comprehensive.raw_metadata["frame_info"]) == 4
 
+    def _create_special_dimensions_mock(self):
+        """Create mock connection with special coordinate ranges."""
+        mock_conn = Mock(spec=sqlite3.Connection)
+        mock_cursor = Mock()
+        mock_conn.cursor.return_value = mock_cursor
+
+        def fetchall_side_effect():
+            return [
+                ("ImagingAreaMinXIndexPos", "10"),
+                ("ImagingAreaMaxXIndexPos", "40"),
+                ("ImagingAreaMinYIndexPos", "5"),
+                ("ImagingAreaMaxYIndexPos", "25"),
+                ("MzAcqRangeLower", "100.0"),
+                ("MzAcqRangeUpper", "1000.0"),
+            ]
+
+        def fetchone_side_effect():
+            last_call = mock_cursor.execute.call_args
+            if last_call and len(last_call) > 0:
+                query = last_call[0][0] if last_call[0] else ""
+                if "BeamScanSizeX, BeamScanSizeY, SpotSize" in query:
+                    return (25.0, 25.0, 1.0)
+                elif "MIN(XIndexPos)" in query and "COUNT(*)" in query:
+                    return (10, 40, 5, 25, 100)
+            return None
+
+        mock_cursor.fetchall.return_value = fetchall_side_effect()
+        mock_cursor.fetchone.side_effect = fetchone_side_effect
+        mock_cursor.execute.return_value = mock_cursor
+
+        return mock_conn
+
     def test_dimensions_calculation(self):
         """Test dimensions calculation with various coordinate ranges."""
-        # Test with coordinates that don't start from 0
-        sample_data = {
-            "essential": (25.0, 25.0, 1.0, 0, 2, 0, 4, 100, 100.0, 1000.0),
-            "comprehensive": [],
-        }
-
-        def create_special_mock_connection():
-            mock_conn = Mock(spec=sqlite3.Connection)
-            mock_cursor = Mock()
-            mock_conn.cursor.return_value = mock_cursor
-
-            def fetchall_side_effect():
-                # Return bounds that will be normalized to 0-based coordinates
-                return [
-                    ("ImagingAreaMinXIndexPos", "10"),
-                    ("ImagingAreaMaxXIndexPos", "40"),
-                    ("ImagingAreaMinYIndexPos", "5"),
-                    ("ImagingAreaMaxYIndexPos", "25"),
-                    ("MzAcqRangeLower", "100.0"),
-                    ("MzAcqRangeUpper", "1000.0"),
-                ]
-
-            def fetchone_side_effect():
-                last_call = mock_cursor.execute.call_args
-                if last_call and len(last_call) > 0:
-                    query = last_call[0][0] if last_call[0] else ""
-                    if "BeamScanSizeX, BeamScanSizeY, SpotSize" in query:
-                        return (25.0, 25.0, 1.0)
-                    elif "MIN(XIndexPos)" in query and "COUNT(*)" in query:
-                        # Return frame coordinates
-                        return (10, 40, 5, 25, 100)
-                return None
-
-            mock_cursor.fetchall.return_value = fetchall_side_effect()
-            mock_cursor.fetchone.side_effect = fetchone_side_effect
-            mock_cursor.execute.return_value = mock_cursor
-
-            return mock_conn
-
-        mock_conn = create_special_mock_connection()
+        mock_conn = self._create_special_dimensions_mock()
         data_path = Path("/test/data.d")
 
         extractor = BrukerMetadataExtractor(mock_conn, data_path)
@@ -321,41 +337,41 @@ class TestBrukerMetadataExtractor:
         with pytest.raises((ValueError, TypeError)):
             extractor.get_essential()
 
+    def _create_single_spectrum_mock(self):
+        """Create mock connection for single spectrum dataset."""
+        mock_conn = Mock(spec=sqlite3.Connection)
+        mock_cursor = Mock()
+        mock_conn.cursor.return_value = mock_cursor
+
+        def fetchall_side_effect():
+            return [
+                ("ImagingAreaMinXIndexPos", "0"),
+                ("ImagingAreaMaxXIndexPos", "0"),
+                ("ImagingAreaMinYIndexPos", "0"),
+                ("ImagingAreaMaxYIndexPos", "0"),
+                ("MzAcqRangeLower", "100.0"),
+                ("MzAcqRangeUpper", "1000.0"),
+            ]
+
+        def fetchone_side_effect():
+            last_call = mock_cursor.execute.call_args
+            if last_call and len(last_call) > 0:
+                query = last_call[0][0] if last_call[0] else ""
+                if "BeamScanSizeX, BeamScanSizeY, SpotSize" in query:
+                    return (25.0, 25.0, 1.0)
+                elif "MIN(XIndexPos)" in query and "COUNT(*)" in query:
+                    return (0, 0, 0, 0, 1)
+            return None
+
+        mock_cursor.fetchall.return_value = fetchall_side_effect()
+        mock_cursor.fetchone.side_effect = fetchone_side_effect
+        mock_cursor.execute.return_value = mock_cursor
+
+        return mock_conn
+
     def test_single_spectrum_dataset(self):
         """Test handling of dataset with single spectrum."""
-
-        def create_single_spectrum_mock():
-            mock_conn = Mock(spec=sqlite3.Connection)
-            mock_cursor = Mock()
-            mock_conn.cursor.return_value = mock_cursor
-
-            def fetchall_side_effect():
-                return [
-                    ("ImagingAreaMinXIndexPos", "0"),
-                    ("ImagingAreaMaxXIndexPos", "0"),
-                    ("ImagingAreaMinYIndexPos", "0"),
-                    ("ImagingAreaMaxYIndexPos", "0"),
-                    ("MzAcqRangeLower", "100.0"),
-                    ("MzAcqRangeUpper", "1000.0"),
-                ]
-
-            def fetchone_side_effect():
-                last_call = mock_cursor.execute.call_args
-                if last_call and len(last_call) > 0:
-                    query = last_call[0][0] if last_call[0] else ""
-                    if "BeamScanSizeX, BeamScanSizeY, SpotSize" in query:
-                        return (25.0, 25.0, 1.0)
-                    elif "MIN(XIndexPos)" in query and "COUNT(*)" in query:
-                        return (0, 0, 0, 0, 1)  # Single spectrum
-                return None
-
-            mock_cursor.fetchall.return_value = fetchall_side_effect()
-            mock_cursor.fetchone.side_effect = fetchone_side_effect
-            mock_cursor.execute.return_value = mock_cursor
-
-            return mock_conn
-
-        mock_conn = create_single_spectrum_mock()
+        mock_conn = self._create_single_spectrum_mock()
         data_path = Path("/test/data.d")
 
         extractor = BrukerMetadataExtractor(mock_conn, data_path)
@@ -365,41 +381,41 @@ class TestBrukerMetadataExtractor:
         assert essential.n_spectra == 1
         assert essential.coordinate_bounds == (0.0, 0.0, 0.0, 0.0)
 
+    def _create_inconsistent_pixel_mock(self):
+        """Create mock connection with different X/Y pixel sizes."""
+        mock_conn = Mock(spec=sqlite3.Connection)
+        mock_cursor = Mock()
+        mock_conn.cursor.return_value = mock_cursor
+
+        def fetchall_side_effect():
+            return [
+                ("ImagingAreaMinXIndexPos", "0"),
+                ("ImagingAreaMaxXIndexPos", "100"),
+                ("ImagingAreaMinYIndexPos", "0"),
+                ("ImagingAreaMaxYIndexPos", "200"),
+                ("MzAcqRangeLower", "100.0"),
+                ("MzAcqRangeUpper", "1000.0"),
+            ]
+
+        def fetchone_side_effect():
+            last_call = mock_cursor.execute.call_args
+            if last_call and len(last_call) > 0:
+                query = last_call[0][0] if last_call[0] else ""
+                if "BeamScanSizeX, BeamScanSizeY, SpotSize" in query:
+                    return (20.0, 30.0, 1.0)
+                elif "MIN(XIndexPos)" in query and "COUNT(*)" in query:
+                    return (0, 100, 0, 200, 400)
+            return None
+
+        mock_cursor.fetchall.return_value = fetchall_side_effect()
+        mock_cursor.fetchone.side_effect = fetchone_side_effect
+        mock_cursor.execute.return_value = mock_cursor
+
+        return mock_conn
+
     def test_inconsistent_pixel_sizes(self):
         """Test handling when X and Y pixel sizes are different."""
-
-        def create_inconsistent_pixel_mock():
-            mock_conn = Mock(spec=sqlite3.Connection)
-            mock_cursor = Mock()
-            mock_conn.cursor.return_value = mock_cursor
-
-            def fetchall_side_effect():
-                return [
-                    ("ImagingAreaMinXIndexPos", "0"),
-                    ("ImagingAreaMaxXIndexPos", "100"),
-                    ("ImagingAreaMinYIndexPos", "0"),
-                    ("ImagingAreaMaxYIndexPos", "200"),
-                    ("MzAcqRangeLower", "100.0"),
-                    ("MzAcqRangeUpper", "1000.0"),
-                ]
-
-            def fetchone_side_effect():
-                last_call = mock_cursor.execute.call_args
-                if last_call and len(last_call) > 0:
-                    query = last_call[0][0] if last_call[0] else ""
-                    if "BeamScanSizeX, BeamScanSizeY, SpotSize" in query:
-                        return (20.0, 30.0, 1.0)  # Different X/Y sizes
-                    elif "MIN(XIndexPos)" in query and "COUNT(*)" in query:
-                        return (0, 100, 0, 200, 400)
-                return None
-
-            mock_cursor.fetchall.return_value = fetchall_side_effect()
-            mock_cursor.fetchone.side_effect = fetchone_side_effect
-            mock_cursor.execute.return_value = mock_cursor
-
-            return mock_conn
-
-        mock_conn = create_inconsistent_pixel_mock()
+        mock_conn = self._create_inconsistent_pixel_mock()
         data_path = Path("/test/data.d")
 
         extractor = BrukerMetadataExtractor(mock_conn, data_path)
@@ -439,42 +455,41 @@ class TestBrukerMetadataExtractor:
         extractor = BrukerMetadataExtractor(mock_conn, data_path)
         assert extractor.data_path == data_path
 
+    def _create_large_range_mock(self):
+        """Create mock connection with large coordinate ranges."""
+        mock_conn = Mock(spec=sqlite3.Connection)
+        mock_cursor = Mock()
+        mock_conn.cursor.return_value = mock_cursor
+
+        def fetchall_side_effect():
+            return [
+                ("ImagingAreaMinXIndexPos", "0"),
+                ("ImagingAreaMaxXIndexPos", "10000"),
+                ("ImagingAreaMinYIndexPos", "0"),
+                ("ImagingAreaMaxYIndexPos", "10000"),
+                ("MzAcqRangeLower", "50.0"),
+                ("MzAcqRangeUpper", "2000.0"),
+            ]
+
+        def fetchone_side_effect():
+            last_call = mock_cursor.execute.call_args
+            if last_call and len(last_call) > 0:
+                query = last_call[0][0] if last_call[0] else ""
+                if "BeamScanSizeX, BeamScanSizeY, SpotSize" in query:
+                    return (1.0, 1.0, 1.0)
+                elif "MIN(XIndexPos)" in query and "COUNT(*)" in query:
+                    return (0, 10000, 0, 10000, 100000000)
+            return None
+
+        mock_cursor.fetchall.return_value = fetchall_side_effect()
+        mock_cursor.fetchone.side_effect = fetchone_side_effect
+        mock_cursor.execute.return_value = mock_cursor
+
+        return mock_conn
+
     def test_large_coordinate_range(self):
         """Test handling of very large coordinate ranges."""
-
-        def create_large_range_mock():
-            mock_conn = Mock(spec=sqlite3.Connection)
-            mock_cursor = Mock()
-            mock_conn.cursor.return_value = mock_conn
-
-            def fetchall_side_effect():
-                return [
-                    ("ImagingAreaMinXIndexPos", "0"),
-                    ("ImagingAreaMaxXIndexPos", "10000"),
-                    ("ImagingAreaMinYIndexPos", "0"),
-                    ("ImagingAreaMaxYIndexPos", "10000"),
-                    ("MzAcqRangeLower", "50.0"),
-                    ("MzAcqRangeUpper", "2000.0"),
-                ]
-
-            def fetchone_side_effect():
-                last_call = mock_cursor.execute.call_args
-                if last_call and len(last_call) > 0:
-                    query = last_call[0][0] if last_call[0] else ""
-                    if "BeamScanSizeX, BeamScanSizeY, SpotSize" in query:
-                        return (1.0, 1.0, 1.0)
-                    elif "MIN(XIndexPos)" in query and "COUNT(*)" in query:
-                        return (0, 10000, 0, 10000, 100000000)
-                return None
-
-            mock_cursor.fetchall.return_value = fetchall_side_effect()
-            mock_cursor.fetchone.side_effect = fetchone_side_effect
-            mock_cursor.execute.return_value = mock_cursor
-            mock_conn.cursor.return_value = mock_cursor
-
-            return mock_conn
-
-        mock_conn = create_large_range_mock()
+        mock_conn = self._create_large_range_mock()
         data_path = Path("/test/data.d")
 
         extractor = BrukerMetadataExtractor(mock_conn, data_path)

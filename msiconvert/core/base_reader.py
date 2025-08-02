@@ -1,7 +1,7 @@
 # msiconvert/core/base_reader.py
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Generator, Optional, Tuple
+from typing import TYPE_CHECKING, Generator, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -16,8 +16,7 @@ class BaseMSIReader(ABC):
     """Abstract base class for reading MSI data formats."""
 
     def __init__(self, data_path: Path, **kwargs):
-        """
-        Initialize the reader with the path to the data.
+        """Initialize the reader with the path to the data.
 
         Args:
             data_path: Path to the data file or directory
@@ -48,8 +47,7 @@ class BaseMSIReader(ABC):
 
     @abstractmethod
     def get_common_mass_axis(self) -> NDArray[np.float64]:
-        """
-        Return the common mass axis for all spectra.
+        """Return the common mass axis for all spectra.
 
         This method must always return a valid array.
         If no common mass axis can be created, implementations should raise an exception.
@@ -57,15 +55,12 @@ class BaseMSIReader(ABC):
         pass
 
     @abstractmethod
-    def iter_spectra(
-        self, batch_size: Optional[int] = None
-    ) -> Generator[
+    def iter_spectra(self, batch_size: Optional[int] = None) -> Generator[
         Tuple[Tuple[int, int, int], NDArray[np.float64], NDArray[np.float64]],
         None,
         None,
     ]:
-        """
-        Iterate through spectra with optional batch processing.
+        """Iterate through spectra with optional batch processing.
 
         Args:
             batch_size: Optional batch size for spectrum iteration
@@ -86,8 +81,7 @@ class BaseMSIReader(ABC):
         intensities: NDArray[np.float64],
         common_axis: NDArray[np.float64],
     ) -> Tuple[NDArray[np.int_], NDArray[np.float64]]:
-        """
-        Map m/z values to indices in the common mass axis with high accuracy.
+        """Map m/z values to indices in the common mass axis with high accuracy.
 
         This method ensures exact mapping of m/z values to the common mass axis
         without interpolation, preserving the original intensity values.
@@ -123,10 +117,10 @@ class BaseMSIReader(ABC):
         """Close all open file handles."""
         pass
 
-    def __enter__(self):
+    def __enter__(self) -> "BaseMSIReader":
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[object]) -> None:
         """Context manager exit with cleanup."""
         self.close()

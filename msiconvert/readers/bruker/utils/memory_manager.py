@@ -146,11 +146,17 @@ class BufferPool:
         with self._lock:
             return {
                 "float64_sizes": list(self._float64_buffers.keys()),
-                "float64_counts": {k: len(v) for k, v in self._float64_buffers.items()},
+                "float64_counts": {
+                    k: len(v) for k, v in self._float64_buffers.items()
+                },
                 "float32_sizes": list(self._float32_buffers.keys()),
-                "float32_counts": {k: len(v) for k, v in self._float32_buffers.items()},
+                "float32_counts": {
+                    k: len(v) for k, v in self._float32_buffers.items()
+                },
                 "uint32_sizes": list(self._uint32_buffers.keys()),
-                "uint32_counts": {k: len(v) for k, v in self._uint32_buffers.items()},
+                "uint32_counts": {
+                    k: len(v) for k, v in self._uint32_buffers.items()
+                },
             }
 
 
@@ -163,7 +169,9 @@ class MemoryManager:
     """
 
     def __init__(
-        self, memory_limit_gb: Optional[float] = None, buffer_pool_size: int = 10
+        self,
+        memory_limit_gb: Optional[float] = None,
+        buffer_pool_size: int = 10,
     ):
         """
         Initialize the memory manager.
@@ -183,7 +191,9 @@ class MemoryManager:
         self._peak_memory_mb = 0.0
         self._total_allocations = 0
 
-        logger.info(f"Initialized MemoryManager with limit: {memory_limit_gb}GB")
+        logger.info(
+            f"Initialized MemoryManager with limit: {memory_limit_gb}GB"
+        )
 
     def get_memory_usage(self) -> Dict[str, float]:
         """
@@ -216,7 +226,10 @@ class MemoryManager:
             "rss_mb": rss_mb,
             "vms_mb": vms_mb,
             "peak_mb": self._peak_memory_mb,
-            "system_available_gb": system_memory.available / 1024 / 1024 / 1024,
+            "system_available_gb": system_memory.available
+            / 1024
+            / 1024
+            / 1024,
             "system_percent": system_memory.percent,
         }
 
@@ -252,7 +265,9 @@ class MemoryManager:
         # Clear buffer pool if memory pressure is high
         usage = self.get_memory_usage()
         if usage["system_percent"] > 80:  # System memory usage > 80%
-            logger.info("High system memory usage detected, clearing buffer pool")
+            logger.info(
+                "High system memory usage detected, clearing buffer pool"
+            )
             self.buffer_pool.clear()
 
         # Force garbage collection
@@ -319,13 +334,19 @@ class MemoryManager:
 
         # Sparse matrix memory (estimated)
         # Assume 10% fill rate for sparse matrix
-        sparse_matrix_mb = (n_spectra * n_unique_masses * 0.1 * 4) / 1024 / 1024
+        sparse_matrix_mb = (
+            (n_spectra * n_unique_masses * 0.1 * 4) / 1024 / 1024
+        )
 
         # Coordinate data
-        coordinates_mb = n_spectra * 3 * 4 / 1024 / 1024  # 3 coords * 4 bytes each
+        coordinates_mb = (
+            n_spectra * 3 * 4 / 1024 / 1024
+        )  # 3 coords * 4 bytes each
 
         # Buffer overhead (estimated)
-        buffer_overhead_mb = max(100, raw_data_mb * 0.1)  # 10% overhead, min 100MB
+        buffer_overhead_mb = max(
+            100, raw_data_mb * 0.1
+        )  # 10% overhead, min 100MB
 
         total_mb = (
             raw_data_mb
@@ -371,7 +392,9 @@ class MemoryManager:
         batch_size = max(1, int(target_memory_mb / memory_per_spectrum_mb))
 
         # Ensure reasonable bounds
-        batch_size = min(batch_size, total_spectra, 1000)  # Max 1000 spectra per batch
+        batch_size = min(
+            batch_size, total_spectra, 1000
+        )  # Max 1000 spectra per batch
         batch_size = max(batch_size, 10)  # Min 10 spectra per batch
 
         logger.info(

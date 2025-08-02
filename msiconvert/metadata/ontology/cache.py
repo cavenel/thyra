@@ -2,7 +2,7 @@
 """Local ontology cache for imzML terms."""
 
 import logging
-from typing import Dict, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from ._ims import terms as ims_terms
 from ._ms import terms as ms_terms
@@ -80,9 +80,18 @@ class OntologyCache:
         prefix = accession.split(":")[0] if ":" in accession else None
 
         urls = {
-            "MS": f"https://www.ebi.ac.uk/ols/ontologies/ms/terms?iri=http://purl.obolibrary.org/obo/{accession.replace(':', '_')}",
-            "IMS": f"https://www.ebi.ac.uk/ols/ontologies/ims/terms?iri=http://purl.obolibrary.org/obo/{accession.replace(':', '_')}",
-            "UO": f"https://www.ebi.ac.uk/ols/ontologies/uo/terms?iri=http://purl.obolibrary.org/obo/{accession.replace(':', '_')}",
+            "MS": (
+                f"https://www.ebi.ac.uk/ols/ontologies/ms/terms?iri="
+                f"http://purl.obolibrary.org/obo/{accession.replace(':', '_')}"
+            ),
+            "IMS": (
+                f"https://www.ebi.ac.uk/ols/ontologies/ims/terms?iri="
+                f"http://purl.obolibrary.org/obo/{accession.replace(':', '_')}"
+            ),
+            "UO": (
+                f"https://www.ebi.ac.uk/ols/ontologies/uo/terms?iri="
+                f"http://purl.obolibrary.org/obo/{accession.replace(':', '_')}"
+            ),
         }
 
         return urls.get(prefix)

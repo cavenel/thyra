@@ -66,7 +66,9 @@ class TestBrukerRealData:
             assert pixel_size is not None
             assert isinstance(pixel_size, tuple)
             assert len(pixel_size) == 2
-            assert all(isinstance(x, (int, float)) and x > 0 for x in pixel_size)
+            assert all(
+                isinstance(x, (int, float)) and x > 0 for x in pixel_size
+            )
 
     def test_cli_workflow_simulation(self, bruker_data_path):
         """Test the workflow that was originally failing in CLI."""
@@ -93,8 +95,8 @@ class TestBrukerRealData:
         with BrukerReader(bruker_data_path) as reader:
             # Test metadata
             metadata = reader.get_comprehensive_metadata()
-            assert hasattr(metadata, 'essential')
-            assert hasattr(metadata.essential, 'source_path')
+            assert hasattr(metadata, "essential")
+            assert hasattr(metadata.essential, "source_path")
             assert str(metadata.essential.source_path) == str(bruker_data_path)
 
             # Test dimensions

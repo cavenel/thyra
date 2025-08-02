@@ -152,7 +152,9 @@ class SDKFunctions:
 
         if handle == 0:
             error_msg = self._get_last_error()
-            raise SDKError(f"Failed to open {self.file_type.upper()} file: {error_msg}")
+            raise SDKError(
+                f"Failed to open {self.file_type.upper()} file: {error_msg}"
+            )
 
         logger.debug(
             f"Opened {self.file_type.upper()} file: {file_path} (handle: {handle})"
@@ -173,10 +175,15 @@ class SDKFunctions:
         else:  # tdf
             dll.tims_close(handle)
 
-        logger.debug(f"Closed {self.file_type.upper()} file (handle: {handle})")
+        logger.debug(
+            f"Closed {self.file_type.upper()} file (handle: {handle})"
+        )
 
     def read_spectrum(
-        self, handle: int, frame_id: int, buffer_size_hint: Optional[int] = None
+        self,
+        handle: int,
+        frame_id: int,
+        buffer_size_hint: Optional[int] = None,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Read a spectrum from the file with optional buffer size optimization.
@@ -193,19 +200,29 @@ class SDKFunctions:
             SDKError: If spectrum cannot be read
         """
         # Use optimized buffer size if provided, otherwise default
-        buffer_size = buffer_size_hint if buffer_size_hint and buffer_size_hint > 0 else 1024
-        
+        buffer_size = (
+            buffer_size_hint
+            if buffer_size_hint and buffer_size_hint > 0
+            else 1024
+        )
+
         if self.file_type == "tsf":
-            return self._read_tsf_spectrum(handle, frame_id, buffer_size, buffer_size_hint is not None)
+            return self._read_tsf_spectrum(
+                handle, frame_id, buffer_size, buffer_size_hint is not None
+            )
         else:  # tdf
             return self._read_tdf_spectrum(handle, frame_id, buffer_size)
 
     def _read_tsf_spectrum(
-        self, handle: int, frame_id: int, buffer_size: int, is_optimized: bool = False
+        self,
+        handle: int,
+        frame_id: int,
+        buffer_size: int,
+        is_optimized: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Read spectrum from TSF file with optional optimization.
-        
+
         Args:
             handle: File handle
             frame_id: Frame ID to read
@@ -239,17 +256,26 @@ class SDKFunctions:
 
                 if result <= buffer_size:
                     # SUCCESS: Exact buffer size worked!
-                    mzs = self._convert_indices_to_mz(handle, frame_id, mz_indices[:result])
+                    mzs = self._convert_indices_to_mz(
+                        handle, frame_id, mz_indices[:result]
+                    )
                     return mzs, intensities[:result].copy()
                 else:
                     # Buffer hint was too small, fall back to retry logic
-                    logger.debug(f"Buffer hint {buffer_size} too small for frame {frame_id} (needed {result}), falling back")
-                    
+                    logger.debug(
+                        f"Buffer hint {buffer_size} too small for frame {frame_id} "
+                        f"(needed {result}), falling back"
+                    )
+
             except Exception as e:
-                logger.debug(f"Optimized read failed for frame {frame_id}: {e}, falling back")
+                logger.debug(
+                    f"Optimized read failed for frame {frame_id}: {e}, falling back"
+                )
 
         # FALLBACK PATH: Use original retry loop logic
-        return self._read_tsf_spectrum_with_retries(handle, frame_id, buffer_size)
+        return self._read_tsf_spectrum_with_retries(
+            handle, frame_id, buffer_size
+        )
 
     def _read_tsf_spectrum_with_retries(
         self, handle: int, frame_id: int, initial_buffer_size: int
@@ -288,7 +314,9 @@ class SDKFunctions:
                 return np.array([]), np.array([])
 
             # Convert indices to m/z values
-            mzs = self._convert_indices_to_mz(handle, frame_id, mz_indices[:result])
+            mzs = self._convert_indices_to_mz(
+                handle, frame_id, mz_indices[:result]
+            )
             return mzs, intensities[:result].copy()
 
     def _read_tdf_spectrum(
@@ -297,8 +325,6 @@ class SDKFunctions:
         """Read spectrum from TDF file (simplified version)."""
         # For TDF files, we need to read scans and combine them
         # This is a simplified version - full implementation would handle mobility
-
-        dll = self.dll_manager.dll
 
         # Read scans for the frame
         scan_data = self._read_scans(
@@ -368,7 +394,9 @@ class SDKFunctions:
 
             peak_count = buffer[idx]
             if peak_count > 0 and offset + peak_count * 2 <= len(buffer):
-                indices = buffer[offset : offset + peak_count].astype(np.float64)
+                indices = buffer[offset : offset + peak_count].astype(
+                    np.float64
+                )
                 offset += peak_count
                 intensities = buffer[offset : offset + peak_count]
                 offset += peak_count
