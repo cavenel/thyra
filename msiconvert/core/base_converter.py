@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from os import PathLike
 from pathlib import Path
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -15,8 +15,8 @@ from .base_reader import BaseMSIReader
 
 
 class BaseMSIConverter(ABC):
-    """
-    Base class for MSI data converters with shared functionality.
+    """Base class for MSI data converters with shared functionality.
+
     Implements common processing steps while allowing format-specific customization.
     """
 
@@ -36,7 +36,7 @@ class BaseMSIConverter(ABC):
         self.pixel_size_um = pixel_size_um
         self.compression_level = compression_level
         self.handle_3d = handle_3d
-        self.options: dict[str, Any] = kwargs
+        self.options: Dict[str, Any] = kwargs
         self._common_mass_axis: Optional[NDArray[np.float64]] = None
         self._dimensions: Optional[Tuple[int, int, int]] = None
         self._metadata: Optional[dict[str, Any]] = None
@@ -45,15 +45,12 @@ class BaseMSIConverter(ABC):
         self._buffer_size = DEFAULT_BUFFER_SIZE
 
         # Essential metadata properties (loaded during initialization)
-        self._coordinate_bounds: Optional[
-            Tuple[float, float, float, float]
-        ] = None
+        self._coordinate_bounds: Optional[Tuple[float, float, float, float]] = None
         self._n_spectra: Optional[int] = None
         self._estimated_memory_gb: Optional[float] = None
 
     def convert(self) -> bool:
-        """
-        Template method defining the conversion workflow.
+        """Template method defining the conversion workflow.
 
         Returns:
         --------
@@ -97,9 +94,7 @@ class BaseMSIConverter(ABC):
             # Override pixel size if not provided and available in metadata
             if self.pixel_size_um == 1.0 and essential.pixel_size:
                 self.pixel_size_um = essential.pixel_size[0]
-                logging.info(
-                    f"Using detected pixel size: {self.pixel_size_um} μm"
-                )
+                logging.info(f"Using detected pixel size: {self.pixel_size_um} μm")
 
             # Load mass axis separately (still expensive operation)
             self._common_mass_axis = self.reader.get_common_mass_axis()
@@ -114,20 +109,15 @@ class BaseMSIConverter(ABC):
             logging.info(f"Dataset dimensions: {self._dimensions}")
             logging.info(f"Coordinate bounds: {self._coordinate_bounds}")
             logging.info(f"Total spectra: {self._n_spectra}")
-            logging.info(
-                f"Estimated memory: {self._estimated_memory_gb:.2f} GB"
-            )
-            logging.info(
-                f"Common mass axis length: {len(self._common_mass_axis)}"
-            )
+            logging.info(f"Estimated memory: {self._estimated_memory_gb:.2f} GB")
+            logging.info(f"Common mass axis length: {len(self._common_mass_axis)}")
         except Exception as e:
             logging.error(f"Error during initialization: {e}")
             raise
 
     @abstractmethod
     def _create_data_structures(self) -> Any:
-        """
-        Create format-specific data structures.
+        """Create format-specific data structures.
 
         Returns:
         --------
@@ -136,8 +126,7 @@ class BaseMSIConverter(ABC):
         pass
 
     def _process_spectra(self, data_structures: Any) -> None:
-        """
-        Process all spectra from the reader and integrate into data structures.
+        """Process all spectra from the reader and integrate into data structures.
 
         Parameters:
         -----------
@@ -161,14 +150,11 @@ class BaseMSIConverter(ABC):
             for coords, mzs, intensities in self.reader.iter_spectra(
                 batch_size=self._buffer_size
             ):
-                self._process_single_spectrum(
-                    data_structures, coords, mzs, intensities
-                )
+                self._process_single_spectrum(data_structures, coords, mzs, intensities)
                 pbar.update(1)
 
     def _get_total_spectra_count(self) -> int:
-        """
-        Get the total number of spectra for progress tracking.
+        """Get the total number of spectra for progress tracking.
 
         Uses cached essential metadata for efficient access.
         """
@@ -212,8 +198,7 @@ class BaseMSIConverter(ABC):
         mzs: NDArray[np.float64],
         intensities: NDArray[np.float64],
     ) -> None:
-        """
-        Process a single spectrum.
+        """Process a single spectrum.
 
         Parameters:
         -----------
@@ -226,8 +211,7 @@ class BaseMSIConverter(ABC):
         pass
 
     def _finalize_data(self, data_structures: Any) -> None:
-        """
-        Perform any final processing on the data structures before saving.
+        """Perform any final processing on the data structures before saving.
 
         Parameters:
         -----------
@@ -236,7 +220,7 @@ class BaseMSIConverter(ABC):
         # Default implementation - to be overridden by subclasses if needed
         pass
 
-    def _get_comprehensive_metadata(self) -> dict[str, Any]:
+    def _get_comprehensive_metadata(self) -> Dict[str, Any]:
         """Lazy load comprehensive metadata when needed."""
         if self._metadata is None:
             logging.info("Loading comprehensive metadata...")
@@ -248,8 +232,7 @@ class BaseMSIConverter(ABC):
 
     @abstractmethod
     def _save_output(self, data_structures: Any) -> bool:
-        """
-        Save the processed data to the output format.
+        """Save the processed data to the output format.
 
         Parameters:
         -----------
@@ -262,8 +245,8 @@ class BaseMSIConverter(ABC):
         pass
 
     def add_metadata(self, metadata: Any) -> None:
-        """
-        Add comprehensive metadata to the output.
+        """Add comprehensive metadata to the output.
+
         Base implementation provides common metadata structure.
         Subclasses should override to add format-specific metadata storage.
 
@@ -306,9 +289,7 @@ class BaseMSIConverter(ABC):
             # Processing statistics
             "processing_stats": {
                 "total_grid_pixels": (
-                    self._dimensions[0]
-                    * self._dimensions[1]
-                    * self._dimensions[2]
+                    self._dimensions[0] * self._dimensions[1] * self._dimensions[2]
                     if self._dimensions
                     else 0
                 ),
@@ -318,9 +299,7 @@ class BaseMSIConverter(ABC):
         }
 
         # Subclasses should override to add this structured metadata to their outputs
-        logging.info(
-            f"Base metadata structure prepared for {self.__class__.__name__}"
-        )
+        logging.info(f"Base metadata structure prepared for {self.__class__.__name__}")
 
         # Default implementation does nothing - subclasses should override
         pass
@@ -328,8 +307,7 @@ class BaseMSIConverter(ABC):
     # --- Common Utility Methods ---
 
     def _create_sparse_matrix(self) -> sparse.lil_matrix:
-        """
-        Create a sparse matrix for storing spectral data.
+        """Create a sparse matrix for storing spectral data.
 
         Returns:
         --------
@@ -349,8 +327,7 @@ class BaseMSIConverter(ABC):
         return sparse.lil_matrix((n_pixels, n_masses), dtype=np.float64)
 
     def _create_coordinates_dataframe(self) -> pd.DataFrame:
-        """
-        Create a DataFrame containing pixel coordinates.
+        """Create a DataFrame containing pixel coordinates.
 
         Returns:
         --------
@@ -387,8 +364,7 @@ class BaseMSIConverter(ABC):
         return coords_df
 
     def _create_mass_dataframe(self) -> pd.DataFrame:
-        """
-        Create a DataFrame containing mass values.
+        """Create a DataFrame containing mass values.
 
         Returns:
         --------
@@ -404,8 +380,7 @@ class BaseMSIConverter(ABC):
         return var_df
 
     def _get_pixel_index(self, x: int, y: int, z: int) -> int:
-        """
-        Convert 3D coordinates to a flat array index.
+        """Convert 3D coordinates to a flat array index.
 
         Parameters:
         -----------
@@ -420,11 +395,8 @@ class BaseMSIConverter(ABC):
         n_x, n_y, _ = self._dimensions
         return z * (n_y * n_x) + y * n_x + x
 
-    def _map_mass_to_indices(
-        self, mzs: NDArray[np.float64]
-    ) -> NDArray[np.int_]:
-        """
-        Map m/z values to indices in the common mass axis with high accuracy.
+    def _map_mass_to_indices(self, mzs: NDArray[np.float64]) -> NDArray[np.int_]:
+        """Map m/z values to indices in the common mass axis with high accuracy.
 
         Parameters:
         -----------
@@ -459,8 +431,7 @@ class BaseMSIConverter(ABC):
         mz_indices: NDArray[np.int_],
         intensities: NDArray[np.float64],
     ) -> None:
-        """
-        Add intensity values to a sparse matrix efficiently.
+        """Add intensity values to a sparse matrix efficiently.
 
         Parameters:
         -----------

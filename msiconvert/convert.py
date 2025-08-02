@@ -3,6 +3,7 @@ import logging
 import traceback
 import warnings
 from pathlib import Path
+from typing import Any, Dict, Optional, Tuple, Union
 
 from .core.registry import detect_format, get_converter_class, get_reader_class
 
@@ -20,7 +21,12 @@ warnings.filterwarnings(
 
 
 def _validate_input_parameters(
-    input_path, output_path, format_type, dataset_id, pixel_size_um, handle_3d
+    input_path: Union[str, Path],
+    output_path: Union[str, Path],
+    format_type: str,
+    dataset_id: str,
+    pixel_size_um: Optional[float],
+    handle_3d: bool,
 ) -> bool:
     """Validate all input parameters for convert_msi function."""
     if not input_path or not isinstance(input_path, (str, Path)):
@@ -65,7 +71,7 @@ def _validate_paths(input_path: Path, output_path: Path) -> bool:
     return True
 
 
-def _create_reader(input_path: Path):
+def _create_reader(input_path: Path) -> Tuple[Any, str]:
     """Create and return a reader for the input format."""
     input_format = detect_format(input_path)
     logging.info(f"Detected format: {input_format}")
@@ -74,7 +80,9 @@ def _create_reader(input_path: Path):
     return reader_class(input_path), input_format
 
 
-def _determine_pixel_size(reader, pixel_size_um, input_format):
+def _determine_pixel_size(
+    reader: Any, pixel_size_um: Optional[float], input_format: str
+) -> Tuple[float, Dict[str, Any]]:
     """Determine pixel size either from metadata or user input."""
     if pixel_size_um is not None:
         # Manual pixel size was provided
@@ -111,15 +119,15 @@ def _determine_pixel_size(reader, pixel_size_um, input_format):
 
 
 def _create_converter(
-    format_type,
-    reader,
-    output_path,
-    dataset_id,
-    pixel_size_um,
-    handle_3d,
-    pixel_size_detection_info,
-    **kwargs,
-):
+    format_type: str,
+    reader: Any,
+    output_path: Path,
+    dataset_id: str,
+    pixel_size_um: float,
+    handle_3d: bool,
+    pixel_size_detection_info: Dict[str, Any],
+    **kwargs: Any,
+) -> Any:
     """Create and return a converter for the specified format."""
     try:
         converter_class = get_converter_class(format_type.lower())
@@ -152,7 +160,7 @@ def _create_converter(
     )
 
 
-def _perform_conversion_with_cleanup(converter, reader):
+def _perform_conversion_with_cleanup(converter: Any, reader: Any) -> bool:
     """Perform the conversion and handle reader cleanup."""
     try:
         logging.info("Starting conversion...")
@@ -167,13 +175,13 @@ def _perform_conversion_with_cleanup(converter, reader):
 
 
 def convert_msi(
-    input_path: str,
-    output_path: str,
+    input_path: Union[str, Path],
+    output_path: Union[str, Path],
     format_type: str = "spatialdata",
     dataset_id: str = "msi_dataset",
-    pixel_size_um: float = None,
+    pixel_size_um: Optional[float] = None,
     handle_3d: bool = False,
-    **kwargs,
+    **kwargs: Any,
 ) -> bool:
     """
     Convert MSI data to the specified format with enhanced error handling and

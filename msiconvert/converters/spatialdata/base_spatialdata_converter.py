@@ -56,8 +56,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         pixel_size_detection_info: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
-        """
-        Initialize the base SpatialData converter.
+        """Initialize the base SpatialData converter.
 
         Args:
             reader: MSI data reader
@@ -82,9 +81,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
 
         # Validate inputs
         if pixel_size_um <= 0:
-            raise ValueError(
-                f"pixel_size_um must be positive, got {pixel_size_um}"
-            )
+            raise ValueError(f"pixel_size_um must be positive, got {pixel_size_um}")
         if not dataset_id.strip():
             raise ValueError("dataset_id cannot be empty")
 
@@ -94,9 +91,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             pixel_size_detection_info is None
             and "pixel_size_detection_info" in kwargs_filtered
         ):
-            pixel_size_detection_info = kwargs_filtered.pop(
-                "pixel_size_detection_info"
-            )
+            pixel_size_detection_info = kwargs_filtered.pop("pixel_size_detection_info")
 
         super().__init__(
             reader,
@@ -111,8 +106,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         self._pixel_size_detection_info = pixel_size_detection_info
 
     def _create_sparse_matrix(self) -> sparse.lil_matrix:
-        """
-        Create sparse matrix for storing intensity values.
+        """Create sparse matrix for storing intensity values.
 
         Returns:
             Sparse matrix for storing intensity values
@@ -135,8 +129,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         return sparse.lil_matrix((n_pixels, n_masses), dtype=np.float64)
 
     def _create_coordinates_dataframe(self) -> pd.DataFrame:
-        """
-        Create coordinates dataframe with pixel positions.
+        """Create coordinates dataframe with pixel positions.
 
         Returns:
             DataFrame with pixel coordinates
@@ -165,9 +158,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
                             "region": f"{self.dataset_id}_pixels",
                             "spatial_x": x * self.pixel_size_um,
                             "spatial_y": y * self.pixel_size_um,
-                            "spatial_z": (
-                                z * self.pixel_size_um if n_z > 1 else 0.0
-                            ),
+                            "spatial_z": (z * self.pixel_size_um if n_z > 1 else 0.0),
                         }
                     )
                     pixel_idx += 1
@@ -177,8 +168,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         return coords_df
 
     def _create_mass_dataframe(self) -> pd.DataFrame:
-        """
-        Create m/z dataframe for variable metadata.
+        """Create m/z dataframe for variable metadata.
 
         Returns:
             DataFrame with m/z values
@@ -195,8 +185,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         )
 
     def _get_pixel_index(self, x: int, y: int, z: int) -> int:
-        """
-        Calculate linear pixel index from 3D coordinates.
+        """Calculate linear pixel index from 3D coordinates.
 
         Args:
             x: X coordinate
@@ -222,8 +211,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         mz_indices: NDArray[np.int_],
         intensities: NDArray[np.float64],
     ) -> None:
-        """
-        Add intensity data to sparse matrix.
+        """Add intensity data to sparse matrix.
 
         Args:
             sparse_matrix: Sparse matrix to update
@@ -236,8 +224,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
     def _create_pixel_shapes(
         self, adata: AnnData, is_3d: bool = False
     ) -> "ShapesModel":
-        """
-        Create geometric shapes for pixels with proper transformations.
+        """Create geometric shapes for pixels with proper transformations.
 
         Args:
             adata: AnnData object containing coordinates
@@ -279,8 +266,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         return shapes
 
     def _save_output(self, data_structures: Dict[str, Any]) -> bool:
-        """
-        Save the data to SpatialData format.
+        """Save the data to SpatialData format.
 
         Args:
             data_structures: Data structures to save
@@ -304,9 +290,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
 
             # Write to disk
             sdata.write(str(self.output_path))
-            logging.info(
-                f"Successfully saved SpatialData to {self.output_path}"
-            )
+            logging.info(f"Successfully saved SpatialData to {self.output_path}")
             return True
         except Exception as e:
             logging.error(f"Error saving SpatialData: {e}")
@@ -316,8 +300,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             return False
 
     def add_metadata(self, metadata: "SpatialData") -> None:
-        """
-        Add comprehensive metadata to the SpatialData object.
+        """Add comprehensive metadata to the SpatialData object.
 
         Args:
             metadata: SpatialData object to add metadata to
@@ -331,13 +314,33 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         # Get comprehensive metadata object for detailed access
         comprehensive_metadata_obj = self.reader.get_comprehensive_metadata()
 
-        # Add explicit pixel size metadata to SpatialData object attributes
+        # Setup attributes and add pixel size metadata
+        self._setup_spatialdata_attrs(metadata, comprehensive_metadata_obj)
+
+        # Add comprehensive dataset metadata if supported
+        self._add_comprehensive_metadata(metadata)
+
+    def _setup_spatialdata_attrs(
+        self, metadata: "SpatialData", comprehensive_metadata_obj
+    ) -> None:
+        """Setup SpatialData attributes with pixel size and metadata."""
         if not hasattr(metadata, "attrs") or metadata.attrs is None:
             metadata.attrs = {}
 
         logging.info("Adding comprehensive metadata to SpatialData.attrs")
 
-        # Import version dynamically (fix for hard-coded version)
+        # Create pixel size attributes
+        pixel_size_attrs = self._create_pixel_size_attrs()
+
+        # Add comprehensive metadata sections
+        self._add_comprehensive_sections(pixel_size_attrs, comprehensive_metadata_obj)
+
+        # Update SpatialData attributes
+        metadata.attrs.update(pixel_size_attrs)
+
+    def _create_pixel_size_attrs(self) -> Dict[str, Any]:
+        """Create pixel size and conversion metadata attributes."""
+        # Import version dynamically
         try:
             from ... import __version__
 
@@ -345,7 +348,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         except ImportError:
             version = "unknown"
 
-        # Add pixel size metadata to SpatialData attributes
+        # Base pixel size metadata
         pixel_size_attrs = {
             "pixel_size_x_um": float(self.pixel_size_um),
             "pixel_size_y_um": float(self.pixel_size_um),
@@ -374,7 +377,12 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             "dimensions_xyz": list(self._dimensions),
         }
 
-        # Add comprehensive metadata sections to SpatialData attributes
+        return pixel_size_attrs
+
+    def _add_comprehensive_sections(
+        self, pixel_size_attrs: Dict[str, Any], comprehensive_metadata_obj
+    ) -> None:
+        """Add comprehensive metadata sections to attributes."""
         if comprehensive_metadata_obj.format_specific:
             pixel_size_attrs["format_specific_metadata"] = (
                 comprehensive_metadata_obj.format_specific
@@ -390,47 +398,45 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
                 comprehensive_metadata_obj.instrument_info
             )
 
-        # Update SpatialData attributes
-        metadata.attrs.update(pixel_size_attrs)
+    def _add_comprehensive_metadata(self, metadata: "SpatialData") -> None:
+        """Add comprehensive dataset metadata if SpatialData supports it."""
+        if not hasattr(metadata, "metadata"):
+            return
 
-        # Add comprehensive dataset metadata if SpatialData supports it
-        if hasattr(metadata, "metadata"):
-            # Start with structured metadata from base class
-            metadata_dict = self._structured_metadata.copy()
+        # Start with structured metadata from base class
+        metadata_dict = self._structured_metadata.copy()
 
-            # Add SpatialData-specific enhancements
-            metadata_dict.update(
-                {
-                    "non_empty_pixels": self._non_empty_pixel_count,
-                    "spatialdata_specific": {
-                        "zarr_compression_level": self.compression_level,
-                        "tables_count": len(getattr(metadata, "tables", {})),
-                        "shapes_count": len(getattr(metadata, "shapes", {})),
-                        "images_count": len(getattr(metadata, "images", {})),
-                    },
-                }
-            )
-
-            # Add pixel size detection provenance if available
-            if self._pixel_size_detection_info is not None:
-                metadata_dict["pixel_size_provenance"] = (
-                    self._pixel_size_detection_info
-                )
-
-            # Add conversion options used
-            metadata_dict["conversion_options"] = {
-                "handle_3d": self.handle_3d,
-                "pixel_size_um": self.pixel_size_um,
-                "dataset_id": self.dataset_id,
-                **self.options,
+        # Add SpatialData-specific enhancements
+        metadata_dict.update(
+            {
+                "non_empty_pixels": self._non_empty_pixel_count,
+                "spatialdata_specific": {
+                    "zarr_compression_level": self.compression_level,
+                    "tables_count": len(getattr(metadata, "tables", {})),
+                    "shapes_count": len(getattr(metadata, "shapes", {})),
+                    "images_count": len(getattr(metadata, "images", {})),
+                },
             }
+        )
 
-            metadata.metadata = metadata_dict
+        # Add pixel size detection provenance if available
+        if self._pixel_size_detection_info is not None:
+            metadata_dict["pixel_size_provenance"] = self._pixel_size_detection_info
 
-            logging.info(
-                f"Comprehensive metadata persisted to SpatialData with "
-                f"{len(metadata_dict)} top-level sections"
-            )
+        # Add conversion options used
+        metadata_dict["conversion_options"] = {
+            "handle_3d": self.handle_3d,
+            "pixel_size_um": self.pixel_size_um,
+            "dataset_id": self.dataset_id,
+            **self.options,
+        }
+
+        metadata.metadata = metadata_dict
+
+        logging.info(
+            f"Comprehensive metadata persisted to SpatialData with "
+            f"{len(metadata_dict)} top-level sections"
+        )
 
     @abstractmethod
     def _create_data_structures(self) -> Dict[str, Any]:

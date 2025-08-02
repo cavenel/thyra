@@ -25,8 +25,7 @@ class ImzMLReader(BaseMSIReader):
         cache_coordinates: bool = True,
         **kwargs,
     ) -> None:
-        """
-        Initialize an ImzML reader.
+        """Initialize an ImzML reader.
 
         Args:
             data_path: Path to the imzML file
@@ -60,15 +59,12 @@ class ImzMLReader(BaseMSIReader):
         """Guarantee parser is initialized exactly once."""
         if not self._parser_initialized:
             if self.filepath is None:
-                raise ValueError(
-                    "No file path provided for parser initialization"
-                )
+                raise ValueError("No file path provided for parser initialization")
             self._initialize_parser(self.filepath)
             self._parser_initialized = True
 
     def _initialize_parser(self, imzml_path: Union[str, Path]) -> None:
-        """
-        Initialize the ImzML parser with the given path.
+        """Initialize the ImzML parser with the given path.
 
         Args:
             imzml_path: Path to the imzML file to parse
@@ -84,9 +80,7 @@ class ImzMLReader(BaseMSIReader):
         self.ibd_path = imzml_path.with_suffix(".ibd")
 
         if not self.ibd_path.exists():
-            raise ValueError(
-                f"Corresponding .ibd file not found for {imzml_path}"
-            )
+            raise ValueError(f"Corresponding .ibd file not found for {imzml_path}")
 
         # Open the .ibd file for reading
         self.ibd_file = open(self.ibd_path, mode="rb")
@@ -128,8 +122,7 @@ class ImzMLReader(BaseMSIReader):
             self._cache_all_coordinates()
 
     def _cache_all_coordinates(self) -> None:
-        """
-        Cache all coordinates for faster access.
+        """Cache all coordinates for faster access.
 
         Converts 1-based coordinates from imzML to 0-based coordinates for internal use.
         """
@@ -157,8 +150,7 @@ class ImzMLReader(BaseMSIReader):
         return ImzMLMetadataExtractor(self.parser, self.imzml_path)
 
     def get_common_mass_axis(self) -> NDArray[np.float64]:
-        """
-        Return the common mass axis composed of all unique m/z values.
+        """Return the common mass axis composed of all unique m/z values.
 
         For continuous mode, returns the m/z values from the first spectrum.
         For processed mode, collects all unique m/z values across spectra.
@@ -176,9 +168,7 @@ class ImzMLReader(BaseMSIReader):
             parser = cast(ImzMLParser, self.parser)
 
             if self.is_continuous:
-                logging.info(
-                    "Using m/z values from first spectrum (continuous mode)"
-                )
+                logging.info("Using m/z values from first spectrum (continuous mode)")
                 spectrum_data = parser.getspectrum(0)  # type: ignore
                 if spectrum_data is None or len(spectrum_data) < 1:  # type: ignore
                     raise ValueError("Could not get first spectrum")
@@ -189,69 +179,142 @@ class ImzMLReader(BaseMSIReader):
 
                 self._common_mass_axis = mzs
             else:
-                # For processed data, collect unique m/z values across spectra
-                logging.info(
-                    "Building common mass axis from all unique m/z values (processed mode)"
-                )
-
-                total_spectra = len(parser.coordinates)  # type: ignore
-
-                all_mzs: List[NDArray[np.float64]] = []
-
-                with tqdm(
-                    total=total_spectra,
-                    desc="Building common mass axis",
-                    unit="spectrum",
-                ) as pbar:
-                    for idx in range(total_spectra):
-                        try:
-                            spectrum_data = parser.getspectrum(idx)  # type: ignore
-                            if spectrum_data is None or len(spectrum_data) < 1:  # type: ignore
-                                continue
-
-                            mzs = spectrum_data[0]
-                            if mzs.size > 0:
-                                all_mzs.append(mzs)
-                        except Exception as e:
-                            logging.warning(
-                                f"Error getting spectrum {idx}: {e}"
-                            )
-                        pbar.update(1)
-
-                if not all_mzs:
-                    # No spectra found - raise exception instead of returning empty array
-                    raise ValueError(
-                        "No spectra found to build common mass axis"
-                    )
-
-                try:
-                    combined_mzs = np.concatenate(all_mzs)
-                    unique_mzs = np.unique(combined_mzs)
-
-                    if unique_mzs.size == 0:
-                        raise ValueError("Failed to extract any m/z values")
-
-                    self._common_mass_axis = unique_mzs
-                    logging.info(
-                        f"Created common mass axis with {len(self._common_mass_axis)} "
-                        f"unique m/z values"
-                    )
-                except Exception as e:
-                    # Re-raise with more context
-                    raise ValueError(
-                        f"Error creating common mass axis: {e}"
-                    ) from e
+                self._common_mass_axis = self._extract_continuous_mass_axis(parser)
 
         # Return the common mass axis
         return self._common_mass_axis
+
+    def _extract_continuous_mass_axis(self, parser: ImzMLParser) -> NDArray[np.float64]:
+        """Extract continuous mass axis from processed data."""
+        # For processed data, collect unique m/z values across spectra
+        logging.info(
+            "Building common mass axis from all unique m/z values (processed mode)"
+        )
+
+        total_spectra = len(parser.coordinates)  # type: ignore
+        all_mzs = self._collect_processed_mzs(parser, total_spectra)
+
+        if not all_mzs:
+            raise ValueError("No spectra found to build common mass axis")
+
+        return self._finalize_mass_axis(all_mzs)
+
+    def _collect_processed_mzs(
+        self, parser: ImzMLParser, total_spectra: int
+    ) -> List[NDArray[np.float64]]:
+        """Collect m/z values from all processed spectra."""
+        all_mzs: List[NDArray[np.float64]] = []
+
+        with tqdm(
+            total=total_spectra,
+            desc="Building common mass axis",
+            unit="spectrum",
+        ) as pbar:
+            for idx in range(total_spectra):
+                try:
+                    spectrum_data = parser.getspectrum(idx)  # type: ignore
+                    if spectrum_data is None or len(spectrum_data) < 1:  # type: ignore
+                        continue
+
+                    mzs = spectrum_data[0]
+                    if mzs.size > 0:
+                        all_mzs.append(mzs)
+                except Exception as e:
+                    logging.warning(f"Error getting spectrum {idx}: {e}")
+                pbar.update(1)
+
+        return all_mzs
+
+    def _finalize_mass_axis(
+        self, all_mzs: List[NDArray[np.float64]]
+    ) -> NDArray[np.float64]:
+        """Finalize the mass axis from collected m/z values."""
+        try:
+            combined_mzs = np.concatenate(all_mzs)
+            unique_mzs = np.unique(combined_mzs)
+
+            if unique_mzs.size == 0:
+                raise ValueError("Failed to extract any m/z values")
+
+            logging.info(
+                f"Created common mass axis with {len(unique_mzs)} unique m/z values"
+            )
+            return unique_mzs
+        except Exception as e:
+            # Re-raise with more context
+            raise ValueError(f"Error creating common mass axis: {e}") from e
+
+    def _get_spectrum_coordinates(
+        self, parser: ImzMLParser, idx: int
+    ) -> Tuple[int, int, int]:
+        """Get 0-based coordinates for a spectrum."""
+        if idx in self._coordinates_cache:
+            return self._coordinates_cache[idx]
+
+        x, y, z = parser.coordinates[idx]  # type: ignore
+        return cast(
+            Tuple[int, int, int],
+            (x - 1, y - 1, z - 1 if z > 0 else 0),
+        )
+
+    def _process_single_spectrum(
+        self, parser: ImzMLParser, idx: int, pbar
+    ) -> Optional[
+        Tuple[Tuple[int, int, int], NDArray[np.float64], NDArray[np.float64]]
+    ]:
+        """Process a single spectrum and return its data."""
+        try:
+            coords = self._get_spectrum_coordinates(parser, idx)
+            mzs, intensities = parser.getspectrum(idx)  # type: ignore
+
+            if mzs.size > 0 and intensities.size > 0:
+                pbar.update(1)
+                return coords, mzs, intensities
+
+            pbar.update(1)
+            return None
+        except Exception as e:
+            logging.warning(f"Error processing spectrum {idx}: {e}")
+            pbar.update(1)
+            return None
+
+    def _iter_spectra_single(
+        self, parser: ImzMLParser, total_spectra: int, pbar
+    ) -> Generator[
+        Tuple[Tuple[int, int, int], NDArray[np.float64], NDArray[np.float64]],
+        None,
+        None,
+    ]:
+        """Process spectra one at a time."""
+        for idx in range(total_spectra):
+            result = self._process_single_spectrum(parser, idx, pbar)
+            if result is not None:
+                yield result
+
+    def _iter_spectra_batch(
+        self, parser: ImzMLParser, total_spectra: int, batch_size: int, pbar
+    ) -> Generator[
+        Tuple[Tuple[int, int, int], NDArray[np.float64], NDArray[np.float64]],
+        None,
+        None,
+    ]:
+        """Process spectra in batches."""
+        for batch_start in range(0, total_spectra, batch_size):
+            batch_end = min(batch_start + batch_size, total_spectra)
+            batch_size_actual = batch_end - batch_start
+
+            for offset in range(batch_size_actual):
+                idx = batch_start + offset
+                result = self._process_single_spectrum(parser, idx, pbar)
+                if result is not None:
+                    yield result
 
     def iter_spectra(self, batch_size: Optional[int] = None) -> Generator[
         Tuple[Tuple[int, int, int], NDArray[np.float64], NDArray[np.float64]],
         None,
         None,
     ]:
-        """
-        Iterate through spectra with progress monitoring and batch processing.
+        """Iterate through spectra with progress monitoring and batch processing.
 
         Maps m/z values to the common mass axis using searchsorted for accurate
         representation in the output data structures.
@@ -270,23 +333,18 @@ class ImzMLReader(BaseMSIReader):
         """
         self._ensure_parser_initialized()
 
-        # Use default batch size if not specified
         if batch_size is None:
             batch_size = self.batch_size
 
-        # We know parser is not None at this point
         parser = cast(ImzMLParser, self.parser)
-
         total_spectra = len(parser.coordinates)  # type: ignore
         dimensions = self.get_essential_metadata().dimensions
         total_pixels = dimensions[0] * dimensions[1] * dimensions[2]
 
-        # Log information about spectra vs pixels
         logging.info(
             f"Processing {total_spectra} spectra in a grid of {total_pixels} pixels"
         )
 
-        # Process in batches
         with tqdm(
             total=total_spectra,
             desc="Reading spectra",
@@ -294,67 +352,14 @@ class ImzMLReader(BaseMSIReader):
             disable=getattr(self, "_quiet_mode", False),
         ) as pbar:
             if batch_size <= 1:
-                # Process one at a time
-                for idx in range(total_spectra):
-                    try:
-                        # Get coordinates (using cached 0-based coordinates if available)
-                        if idx in self._coordinates_cache:
-                            coords = self._coordinates_cache[idx]
-                        else:
-                            x, y, z = parser.coordinates[idx]  # type: ignore
-                            coords = cast(
-                                Tuple[int, int, int],
-                                (x - 1, y - 1, z - 1 if z > 0 else 0),
-                            )
-
-                        # Get spectrum data
-                        mzs, intensities = parser.getspectrum(idx)  # type: ignore
-
-                        if mzs.size > 0 and intensities.size > 0:
-                            yield coords, mzs, intensities
-
-                        pbar.update(1)
-                    except Exception as e:
-                        logging.warning(
-                            f"Error processing spectrum {idx}: {e}"
-                        )
-                        pbar.update(1)
+                yield from self._iter_spectra_single(parser, total_spectra, pbar)
             else:
-                # Process in batches
-                for batch_start in range(0, total_spectra, batch_size):
-                    batch_end = min(batch_start + batch_size, total_spectra)
-                    batch_size_actual = batch_end - batch_start
-
-                    # Process each spectrum in the batch
-                    for offset in range(batch_size_actual):
-                        idx = batch_start + offset
-                        try:
-                            # Get coordinates (using cached 0-based coordinates if available)
-                            if idx in self._coordinates_cache:
-                                coords = self._coordinates_cache[idx]
-                            else:
-                                x, y, z = parser.coordinates[idx]  # type: ignore
-                                coords = cast(
-                                    Tuple[int, int, int],
-                                    (x - 1, y - 1, z - 1 if z > 0 else 0),
-                                )
-
-                            # Get spectrum data
-                            mzs, intensities = parser.getspectrum(idx)  # type: ignore
-
-                            if mzs.size > 0 and intensities.size > 0:
-                                yield coords, mzs, intensities
-
-                            pbar.update(1)
-                        except Exception as e:
-                            logging.warning(
-                                f"Error processing spectrum {idx}: {e}"
-                            )
-                            pbar.update(1)
+                yield from self._iter_spectra_batch(
+                    parser, total_spectra, batch_size, pbar
+                )
 
     def read(self) -> Dict[str, Any]:
-        """
-        Read the entire imzML file and return a structured data dictionary.
+        """Read the entire imzML file and return a structured data dictionary.
 
         Returns:
             Dict containing:
@@ -421,8 +426,7 @@ class ImzMLReader(BaseMSIReader):
 
     @property
     def n_spectra(self) -> int:
-        """
-        Return the total number of spectra in the dataset.
+        """Return the total number of spectra in the dataset.
 
         Returns:
             Total number of spectra (efficient implementation using parser)
