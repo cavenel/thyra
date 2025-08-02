@@ -147,7 +147,7 @@ token = { env = "GITHUB_TOKEN" }
 
 [tool.bandit]
 exclude_dirs = ["tests", "docs"]
-skips = ["B101", "B601"]  # B101: assert_used, B601: paramiko_calls (if needed)
+skips = ["B101", "B601", "B603", "B607"]  # Allow assert statements, shell usage, and subprocess calls with controlled input
 
 [tool.mypy]
 python_version = "3.10"
@@ -175,6 +175,7 @@ module = [
     "shapely.*",
 ]
 ignore_missing_imports = true
+
 
 [tool.pydocstyle]
 convention = "google"

@@ -7,7 +7,7 @@ pre-commit hooks for continuous monitoring.
 """
 
 import json
-import subprocess  # nosec B404 - Subprocess used safely for flake8 execution with controlled arguments
+import subprocess  # nosec B404 - Safe subprocess usage
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -41,15 +41,54 @@ class ComplexityMonitor:
     """Monitors cyclomatic complexity across the codebase."""
 
     def __init__(self, project_root: Path, threshold: int = 10):
+        """Initialize complexity monitor with project path and threshold."""
         self.project_root = project_root
         self.threshold = threshold
         self.reports_dir = project_root / "reports" / "complexity"
         self.reports_dir.mkdir(parents=True, exist_ok=True)
 
+        # Log git state for debugging environment differences
+        self._log_git_state()
+
+    def _log_git_state(self) -> None:
+        """Log git state for debugging environment differences."""
+        try:
+            result = subprocess.run(  # nosec B603,B607
+                ["git", "status", "--porcelain"],
+                capture_output=True,
+                text=True,
+                cwd=self.project_root,
+            )
+            if result.returncode == 0:
+                num_files = (
+                    len(result.stdout.strip().split()) if result.stdout.strip() else 0
+                )
+                click.echo(f"Git status: {num_files} modified files", err=True)
+
+            result = subprocess.run(  # nosec B603,B607
+                ["git", "rev-parse", "HEAD"],
+                capture_output=True,
+                text=True,
+                cwd=self.project_root,
+            )
+            if result.returncode == 0:
+                click.echo(f"Git commit: {result.stdout.strip()[:8]}", err=True)
+        except Exception as e:
+            click.echo(f"Could not get git state: {e}", err=True)
+
     def run_flake8_complexity(self) -> List[str]:
         """Run flake8 with complexity checking and return raw output lines."""
         try:
-            result = subprocess.run(  # nosec B603 - Safe subprocess call with controlled arguments and no shell execution
+            # Add debugging info about what we're scanning
+            msiconvert_path = self.project_root / "msiconvert"
+            tests_path = self.project_root / "tests"
+
+            if not msiconvert_path.exists():
+                click.echo(f"Warning: {msiconvert_path} does not exist", err=True)
+            if not tests_path.exists():
+                click.echo(f"Warning: {tests_path} does not exist", err=True)
+
+            result = subprocess.run(  # nosec B603,B607
                 [
                     sys.executable,
                     "-m",
@@ -57,8 +96,8 @@ class ComplexityMonitor:
                     "--select=C901",  # Only complexity violations
                     f"--max-complexity={self.threshold}",
                     "--format=%(path)s:%(row)d:%(col)d: %(code)s %(text)s",
-                    str(self.project_root / "msiconvert"),
-                    str(self.project_root / "tests"),
+                    str(msiconvert_path),
+                    str(tests_path),
                 ],
                 capture_output=True,
                 text=True,
@@ -68,7 +107,19 @@ class ComplexityMonitor:
             if result.returncode == 0:
                 return []  # No violations
 
-            return result.stdout.strip().split("\n") if result.stdout.strip() else []
+            # Add debugging info about flake8 results
+            if result.stderr:
+                click.echo(f"Flake8 stderr: {result.stderr}", err=True)
+
+            violations = (
+                result.stdout.strip().split("\n") if result.stdout.strip() else []
+            )
+            if violations:
+                click.echo(f"Found {len(violations)} complexity violations:", err=True)
+                for v in violations[:5]:  # Show first 5
+                    click.echo(f"  {v}", err=True)
+
+            return violations
 
         except subprocess.CalledProcessError as e:
             click.echo(f"Error running flake8: {e}", err=True)
@@ -264,8 +315,6 @@ class ComplexityMonitor:
 )
 def main(threshold: int, save: bool, quiet: bool, trends: bool, project_root: str):
     """Monitor cyclomatic complexity across the codebase."""
-
-
     monitor = ComplexityMonitor(Path(project_root), threshold)
 
     # Run complexity analysis
