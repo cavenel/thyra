@@ -66,23 +66,13 @@ class BrukerMetadataExtractor(MetadataExtractor):
             if not frame_result:
                 raise ValueError("No data found in MaldiFrameInfo table")
 
-            min_x_raw, max_x_raw, min_y_raw, max_y_raw, frame_count = (
-                frame_result
-            )
+            min_x_raw, max_x_raw, min_y_raw, max_y_raw, frame_count = frame_result
 
             # Extract imaging area bounds for normalization
-            imaging_min_x = bounds_data.get(
-                "ImagingAreaMinXIndexPos", min_x_raw or 0
-            )
-            imaging_max_x = bounds_data.get(
-                "ImagingAreaMaxXIndexPos", max_x_raw or 0
-            )
-            imaging_min_y = bounds_data.get(
-                "ImagingAreaMinYIndexPos", min_y_raw or 0
-            )
-            imaging_max_y = bounds_data.get(
-                "ImagingAreaMaxYIndexPos", max_y_raw or 0
-            )
+            imaging_min_x = bounds_data.get("ImagingAreaMinXIndexPos", min_x_raw or 0)
+            imaging_max_x = bounds_data.get("ImagingAreaMaxXIndexPos", max_x_raw or 0)
+            imaging_min_y = bounds_data.get("ImagingAreaMinYIndexPos", min_y_raw or 0)
+            imaging_max_y = bounds_data.get("ImagingAreaMaxYIndexPos", max_y_raw or 0)
 
             # Store imaging area offsets for coordinate normalization
             imaging_area_offsets = (int(imaging_min_x), int(imaging_min_y), 0)
@@ -162,9 +152,7 @@ class BrukerMetadataExtractor(MetadataExtractor):
                 f"Failed to extract essential metadata from Bruker database: {e}"
             )
         except Exception as e:
-            logger.error(
-                f"Unexpected error extracting essential metadata: {e}"
-            )
+            logger.error(f"Unexpected error extracting essential metadata: {e}")
             raise
 
     def _extract_comprehensive_impl(self) -> ComprehensiveMetadata:
@@ -208,21 +196,15 @@ class BrukerMetadataExtractor(MetadataExtractor):
         # - mz + intensity arrays
         avg_peaks_per_frame = 2000
         bytes_per_value = 8
-        estimated_bytes = (
-            frame_count * avg_peaks_per_frame * 2 * bytes_per_value
-        )
+        estimated_bytes = frame_count * avg_peaks_per_frame * 2 * bytes_per_value
 
         return estimated_bytes / (1024**3)  # Convert to GB
 
     def _extract_bruker_specific(self) -> Dict[str, Any]:
         """Extract Bruker format-specific metadata."""
         format_specific = {
-            "bruker_format": (
-                "bruker_tdf" if self._is_tdf_format() else "bruker_tsf"
-            ),
-            "data_format": (
-                "bruker_tdf" if self._is_tdf_format() else "bruker_tsf"
-            ),
+            "bruker_format": ("bruker_tdf" if self._is_tdf_format() else "bruker_tsf"),
+            "data_format": ("bruker_tdf" if self._is_tdf_format() else "bruker_tsf"),
             "data_path": str(self.data_path),
             "database_path": str(self.data_path / "analysis.tsf"),
             "is_maldi": self._is_maldi_dataset(),
@@ -230,13 +212,9 @@ class BrukerMetadataExtractor(MetadataExtractor):
 
         # Add file type detection
         if (self.data_path / "analysis.tdf").exists():
-            format_specific["binary_file"] = str(
-                self.data_path / "analysis.tdf"
-            )
+            format_specific["binary_file"] = str(self.data_path / "analysis.tdf")
         elif (self.data_path / "analysis.tsf").exists():
-            format_specific["binary_file"] = str(
-                self.data_path / "analysis.tsf"
-            )
+            format_specific["binary_file"] = str(self.data_path / "analysis.tsf")
 
         return format_specific
 
@@ -246,6 +224,15 @@ class BrukerMetadataExtractor(MetadataExtractor):
         cursor = self.conn.cursor()
 
         # Extract laser parameters if available
+        self._extract_laser_params(cursor, params)
+
+        # Extract timing parameters
+        self._extract_timing_params(cursor, params)
+
+        return params
+
+    def _extract_laser_params(self, cursor, params: Dict[str, Any]) -> None:
+        """Extract laser parameters from database."""
         try:
             cursor.execute(
                 """
@@ -257,28 +244,29 @@ class BrukerMetadataExtractor(MetadataExtractor):
             result = cursor.fetchone()
 
             if result:
-                laser_power, laser_freq, beam_x, beam_y, spot_size = result
-                if laser_power is not None:
-                    params["laser_power"] = laser_power
-                if laser_freq is not None:
-                    params["laser_frequency"] = laser_freq
-                if beam_x is not None:
-                    params["beam_scan_size_x"] = beam_x
-                    params["BeamScanSizeX"] = (
-                        beam_x  # Add both formats for compatibility
-                    )
-                if beam_y is not None:
-                    params["beam_scan_size_y"] = beam_y
-                    params["BeamScanSizeY"] = (
-                        beam_y  # Add both formats for compatibility
-                    )
-                if spot_size is not None:
-                    params["laser_spot_size"] = spot_size
+                self._process_laser_result(result, params)
 
         except sqlite3.OperationalError:
             logger.debug("Could not extract laser parameters")
 
-        # Extract timing parameters
+    def _process_laser_result(self, result, params: Dict[str, Any]) -> None:
+        """Process laser parameter query result."""
+        laser_power, laser_freq, beam_x, beam_y, spot_size = result
+        if laser_power is not None:
+            params["laser_power"] = laser_power
+        if laser_freq is not None:
+            params["laser_frequency"] = laser_freq
+        if beam_x is not None:
+            params["beam_scan_size_x"] = beam_x
+            params["BeamScanSizeX"] = beam_x  # Add both formats for compatibility
+        if beam_y is not None:
+            params["beam_scan_size_y"] = beam_y
+            params["BeamScanSizeY"] = beam_y  # Add both formats for compatibility
+        if spot_size is not None:
+            params["laser_spot_size"] = spot_size
+
+    def _extract_timing_params(self, cursor, params: Dict[str, Any]) -> None:
+        """Extract timing parameters from database."""
         try:
             cursor.execute(
                 "SELECT Value FROM GlobalMetadata WHERE Key = 'AcquisitionDateTime'"
@@ -288,8 +276,6 @@ class BrukerMetadataExtractor(MetadataExtractor):
                 params["acquisition_datetime"] = result[0]
         except sqlite3.OperationalError:
             pass
-
-        return params
 
     def _extract_instrument_info(self) -> Dict[str, Any]:
         """Extract instrument information from global metadata."""

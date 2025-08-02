@@ -144,6 +144,20 @@ class TestBaseMSIConverter:
 
     def test_utility_methods(self):
         """Test the utility methods in the base converter."""
+        # Create test classes and converter
+        converter = self._create_test_converter()
+
+        # Initialize for testing utility methods
+        converter._initialize_conversion()
+
+        # Run all utility method tests
+        self._test_coordinate_conversion(converter)
+        self._test_mass_mapping(converter)
+        self._test_sparse_matrix_operations(converter)
+        self._test_dataframe_creation(converter)
+
+    def _create_test_converter(self):
+        """Create a converter with test classes for utility method testing."""
 
         # Create a minimal implementation for testing
         class MinimalConverter(BaseMSIConverter):
@@ -154,6 +168,13 @@ class TestBaseMSIConverter:
                 return True
 
         # Create a mock reader
+        mock_reader = self._create_mock_reader()
+
+        return MinimalConverter(mock_reader, Path("test.out"))
+
+    def _create_mock_reader(self):
+        """Create a mock reader for testing."""
+
         class MockReader(BaseMSIReader):
             def _create_metadata_extractor(self):
                 from msiconvert.core.base_extractor import MetadataExtractor
@@ -200,25 +221,22 @@ class TestBaseMSIConverter:
             def close(self):
                 pass
 
-        # Create the converter
-        converter = MinimalConverter(
-            MockReader(Path("/test/path")), Path("test.out")
-        )
+        return MockReader(Path("/test/path"))
 
-        # Initialize for testing utility methods
-        converter._initialize_conversion()
-
-        # Test coordinate to index conversion
+    def _test_coordinate_conversion(self, converter):
+        """Test coordinate to index conversion."""
         assert converter._get_pixel_index(0, 0, 0) == 0
         assert converter._get_pixel_index(1, 0, 0) == 1
         assert converter._get_pixel_index(0, 1, 0) == 2
         assert converter._get_pixel_index(1, 1, 0) == 3
 
-        # Test mass mapping
+    def _test_mass_mapping(self, converter):
+        """Test mass mapping functionality."""
         mz_indices = converter._map_mass_to_indices(np.array([100.0, 300.0]))
         np.testing.assert_array_equal(mz_indices, np.array([0, 2]))
 
-        # Test sparse matrix creation
+    def _test_sparse_matrix_operations(self, converter):
+        """Test sparse matrix creation and operations."""
         sparse_matrix = converter._create_sparse_matrix()
         assert sparse_matrix.shape == (4, 3)  # 4 pixels, 3 mass values
 
@@ -229,6 +247,8 @@ class TestBaseMSIConverter:
         assert sparse_matrix[0, 0] == 1.0
         assert sparse_matrix[0, 2] == 2.0
 
+    def _test_dataframe_creation(self, converter):
+        """Test dataframe creation methods."""
         # Test coordinates dataframe
         coords_df = converter._create_coordinates_dataframe()
         assert len(coords_df) == 4
