@@ -4,18 +4,21 @@ Abstract base class for resampling strategies.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
+
 import numpy as np
+import numpy.typing as npt
 
 
 @dataclass
 class Spectrum:
     """Single mass spectrum with coordinates and metadata."""
-    mz: np.ndarray
-    intensity: np.ndarray
+
+    mz: npt.NDArray[np.floating[Any]]
+    intensity: npt.NDArray[np.floating[Any]]
     coordinates: Tuple[int, int, int]  # (x, y, z) coordinates
-    metadata: Optional[Dict] = None
-    
+    metadata: Optional[Dict[str, Any]] = None
+
     @property
     def is_centroid(self) -> bool:
         """Heuristic to detect centroid data."""
@@ -28,19 +31,19 @@ class Spectrum:
 
 class ResamplingStrategy(ABC):
     """Abstract base class for resampling strategies."""
-    
+
     @abstractmethod
-    def resample(self, spectrum: Spectrum, target_axis: np.ndarray) -> Spectrum:
+    def resample(self, spectrum: Spectrum, target_axis: npt.NDArray[np.floating[Any]]) -> Spectrum:
         """
         Resample spectrum to target mass axis.
-        
+
         Parameters
         ----------
         spectrum : Spectrum
             Input spectrum to resample
         target_axis : np.ndarray
             Target mass axis values
-            
+
         Returns
         -------
         Spectrum
