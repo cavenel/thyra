@@ -1,5 +1,5 @@
 """
-Tests for DecisionTree instrument-based method selection - Phase 3.
+Tests for simplified DecisionTree with only timsTOF support - Phase 3.
 """
 
 import pytest
@@ -8,24 +8,26 @@ from msiconvert.resampling.decision_tree import ResamplingDecisionTree
 from msiconvert.resampling.types import ResamplingMethod
 
 
-class TestDecisionTreeInstrumentDetection:
-    """Test instrument-based resampling strategy selection."""
+class TestSimplifiedDecisionTree:
+    """Test simplified decision tree with only timsTOF support."""
     
     def setup_method(self):
         """Setup test fixtures."""
         self.tree = ResamplingDecisionTree()
     
-    def test_no_metadata_default(self):
-        """Test default behavior with no metadata."""
-        method = self.tree.select_strategy(None)
-        assert method == ResamplingMethod.TIC_PRESERVING
+    def test_no_metadata_raises_error(self):
+        """Test that no metadata raises NotImplementedError."""
+        with pytest.raises(NotImplementedError) as exc_info:
+            self.tree.select_strategy(None)
         
-        method = self.tree.select_strategy({})
-        assert method == ResamplingMethod.TIC_PRESERVING
+        assert "metadata not yet implemented" in str(exc_info.value)
+        assert "timsTOF detection is supported" in str(exc_info.value)
+        
+        with pytest.raises(NotImplementedError):
+            self.tree.select_strategy({})
     
     def test_timstof_detection_by_name(self):
         """Test timsTOF detection by instrument name."""
-        # Various timsTOF name variants
         timstof_names = [
             "timsTOF Pro 2",
             "Bruker timsTOF",
@@ -41,107 +43,64 @@ class TestDecisionTreeInstrumentDetection:
             method = self.tree.select_strategy(metadata)
             assert method == ResamplingMethod.NEAREST_NEIGHBOR, f"Failed for {name}"
     
-    def test_orbitrap_detection_by_name(self):
-        """Test Orbitrap detection by instrument name."""
-        orbitrap_names = [
+    def test_non_timstof_instruments_raise_error(self):
+        """Test that non-timsTOF instruments raise NotImplementedError."""
+        non_timstof_instruments = [
             "Orbitrap Fusion Lumos",
-            "Q Exactive HF-X",
-            "QExactive Plus",
-            "Orbitrap Exploris 480",
+            "Q Exactive HF-X", 
             "LTQ Orbitrap Velos",
-            "Orbitrap Eclipse Tribrid"
-        ]
-        
-        for name in orbitrap_names:
-            metadata = {"instrument_name": name}
-            method = self.tree.select_strategy(metadata)
-            assert method == ResamplingMethod.TIC_PRESERVING, f"Failed for {name}"
-    
-    def test_fticr_detection_by_name(self):
-        """Test FT-ICR detection by instrument name."""
-        fticr_names = [
-            "Bruker 12T FT-ICR",
-            "FTICR-MS SolariX",
-            "FT-ICR 15 Tesla"
-        ]
-        
-        for name in fticr_names:
-            metadata = {"instrument_name": name}
-            method = self.tree.select_strategy(metadata)
-            assert method == ResamplingMethod.TIC_PRESERVING, f"Failed for {name}"
-    
-    def test_waters_instruments(self):
-        """Test Waters instrument detection."""
-        waters_names = [
             "Waters Synapt G2-Si",
-            "Vion IMS QTof",
-            "Select Series Cyclic IMS"
+            "Bruker 12T FT-ICR",
+            "Unknown MS Instrument"
         ]
         
-        for name in waters_names:
-            metadata = {"instrument_name": name}
-            method = self.tree.select_strategy(metadata)
-            assert method == ResamplingMethod.TIC_PRESERVING, f"Failed for {name}"
-    
-    def test_acquisition_mode_detection(self):
-        """Test acquisition mode-based detection."""
-        # Centroid mode should trigger nearest neighbor
-        centroid_modes = ["centroid", "centroided", "peak picked", "peaks"]
-        for mode in centroid_modes:
-            metadata = {"acquisition_mode": mode}
-            method = self.tree.select_strategy(metadata)
-            assert method == ResamplingMethod.NEAREST_NEIGHBOR, f"Failed for {mode}"
-        
-        # Profile mode should trigger TIC preserving
-        profile_modes = ["profile", "continuum", "raw spectrum"]
-        for mode in profile_modes:
-            metadata = {"acquisition_mode": mode}
-            method = self.tree.select_strategy(metadata)
-            assert method == ResamplingMethod.TIC_PRESERVING, f"Failed for {mode}"
+        for instrument in non_timstof_instruments:
+            metadata = {"instrument_name": instrument}
+            with pytest.raises(NotImplementedError) as exc_info:
+                self.tree.select_strategy(metadata)
+            
+            assert instrument in str(exc_info.value)
+            assert "not yet implemented" in str(exc_info.value)
+            assert "timsTOF detection is supported" in str(exc_info.value)
     
     def test_bruker_metadata_timstof_detection(self):
         """Test timsTOF detection from Bruker-specific metadata."""
-        # Simulate Bruker GlobalMetadata structure
+        # Test with exact instrument name "timsTOF Maldi 2"
         bruker_timstof_metadata = {
             "GlobalMetadata": {
-                "InstrumentFamily": "TOF",
-                "InstrumentName": "timsTOF Pro 2",
-                "Method": "TIMS-DDA with mobility separation"
-            },
-            "AcquisitionKeys": {
-                "TIMSCalibrationParameters": {"Beta": 0.12345},
-                "MobilitySettings": {"Range": "0.6-1.8"}
+                "InstrumentName": "timsTOF Maldi 2"
             }
         }
         
         method = self.tree.select_strategy(bruker_timstof_metadata)
         assert method == ResamplingMethod.NEAREST_NEIGHBOR
         
-        # Test with method-based detection
-        metadata_method_based = {
+        # Test with other timsTOF variants should NOT be detected via Bruker metadata
+        other_timstof_metadata = {
             "GlobalMetadata": {
-                "Method": "PASEF LC-MS/MS with ion mobility"
+                "InstrumentName": "timsTOF Pro 2"  # Different variant
             }
         }
-        method = self.tree.select_strategy(metadata_method_based)
-        assert method == ResamplingMethod.NEAREST_NEIGHBOR
+        with pytest.raises(NotImplementedError):
+            self.tree.select_strategy(other_timstof_metadata)
+    
+    def test_non_bruker_metadata_raises_error(self):
+        """Test that non-Bruker metadata without timsTOF raises error."""
+        non_bruker_metadata = {
+            "instrument_name": "Q Exactive",
+            "file_format": "mzML",
+            "acquisition_mode": "profile"
+        }
         
-        # Test with acquisition keys
-        metadata_acq_keys = {
-            "AcquisitionKeys": {
-                "IMSSettings": {"enabled": True}
-            }
-        }
-        method = self.tree.select_strategy(metadata_acq_keys)
-        assert method == ResamplingMethod.NEAREST_NEIGHBOR
+        with pytest.raises(NotImplementedError):
+            self.tree.select_strategy(non_bruker_metadata)
     
     def test_metadata_key_variants(self):
-        """Test different metadata key variants."""
-        # Test various instrument name keys
+        """Test different metadata key variants for instrument name."""
         instrument_key_variants = [
             "instrument_name",
-            "instrument", 
-            "instrument_model",
+            "instrument",
+            "instrument_model", 
             "InstrumentName",
             "Instrument",
             "InstrumentModel",
@@ -153,49 +112,13 @@ class TestDecisionTreeInstrumentDetection:
             metadata = {key: "timsTOF Pro"}
             method = self.tree.select_strategy(metadata)
             assert method == ResamplingMethod.NEAREST_NEIGHBOR, f"Failed for key {key}"
-        
-        # Test acquisition mode key variants
-        mode_key_variants = [
-            "acquisition_mode",
-            "mode", 
-            "spectrum_type",
-            "AcquisitionMode",
-            "Mode",
-            "SpectrumType",
-            "ms_acquisition_mode",
-            "data_type"
-        ]
-        
-        for key in mode_key_variants:
-            metadata = {key: "centroid"}
-            method = self.tree.select_strategy(metadata)
-            assert method == ResamplingMethod.NEAREST_NEIGHBOR, f"Failed for key {key}"
-    
-    def test_priority_hierarchy(self):
-        """Test that instrument name takes priority over acquisition mode."""
-        # timsTOF with profile mode should still use nearest neighbor
-        metadata = {
-            "instrument_name": "timsTOF Pro 2",
-            "acquisition_mode": "profile"  # Conflicting signal
-        }
-        method = self.tree.select_strategy(metadata)
-        assert method == ResamplingMethod.NEAREST_NEIGHBOR
-        
-        # Orbitrap with centroid mode should use TIC preserving
-        metadata = {
-            "instrument_name": "Orbitrap Fusion",
-            "acquisition_mode": "centroid"  # Conflicting signal
-        }
-        method = self.tree.select_strategy(metadata)
-        assert method == ResamplingMethod.TIC_PRESERVING
     
     def test_case_insensitive_detection(self):
-        """Test case insensitive detection."""
-        # Various case variants
+        """Test case insensitive timsTOF detection."""
         case_variants = [
             "TIMSTOF PRO",
-            "timstof pro", 
-            "TimsTof Pro",
+            "timstof pro",
+            "TimsTof Pro", 
             "TIMS-TOF PRO",
             "tImStOf PrO"
         ]
@@ -205,52 +128,18 @@ class TestDecisionTreeInstrumentDetection:
             method = self.tree.select_strategy(metadata)
             assert method == ResamplingMethod.NEAREST_NEIGHBOR, f"Failed for {variant}"
     
-    def test_unknown_instrument_default(self):
-        """Test that unknown instruments default to TIC preserving."""
-        unknown_instruments = [
-            "Unknown MS Instrument",
-            "Custom Quadrupole",
-            "Prototype TOF-MS",
-            "",  # Empty string
-            "   "  # Whitespace
-        ]
+    def test_empty_instrument_name_raises_error(self):
+        """Test that empty instrument names raise NotImplementedError."""
+        empty_names = ["", "   ", None]
         
-        for instrument in unknown_instruments:
-            metadata = {"instrument_name": instrument}
-            method = self.tree.select_strategy(metadata)
-            assert method == ResamplingMethod.TIC_PRESERVING, f"Failed for {instrument}"
-    
-    def test_complex_metadata_structures(self):
-        """Test with complex nested metadata structures."""
-        complex_metadata = {
-            "instrument_info": {
-                "manufacturer": "Bruker",
-                "model": "timsTOF Pro 2",
-                "serial": "12345"
-            },
-            "acquisition_parameters": {
-                "mode": "PASEF",
-                "mobility_range": [0.6, 1.8],
-                "ms_range": [50, 2000]
-            },
-            "file_info": {
-                "format": "Bruker .d",
-                "size_mb": 1500
-            }
-        }
-        
-        # Should not detect timsTOF from nested structure without proper key
-        method = self.tree.select_strategy(complex_metadata)
-        assert method == ResamplingMethod.TIC_PRESERVING
-        
-        # Add proper instrument key
-        complex_metadata["instrument_name"] = "timsTOF Pro 2"
-        method = self.tree.select_strategy(complex_metadata)
-        assert method == ResamplingMethod.NEAREST_NEIGHBOR
+        for name in empty_names:
+            metadata = {"instrument_name": name}
+            with pytest.raises(NotImplementedError):
+                self.tree.select_strategy(metadata)
 
 
 class TestDecisionTreeHelperMethods:
-    """Test helper methods of DecisionTree."""
+    """Test helper methods of simplified DecisionTree."""
     
     def setup_method(self):
         """Setup test fixtures."""
@@ -271,17 +160,6 @@ class TestDecisionTreeHelperMethods:
         name = self.tree._extract_instrument_name({})
         assert name is None
     
-    def test_extract_acquisition_mode(self):
-        """Test acquisition mode extraction."""
-        metadata = {"acquisition_mode": "  CENTROID  "}
-        mode = self.tree._extract_acquisition_mode(metadata)
-        assert mode == "centroid"  # Should be stripped and lowercased
-        
-        # Test None values
-        metadata = {"acquisition_mode": None}
-        mode = self.tree._extract_acquisition_mode(metadata)
-        assert mode is None
-    
     def test_is_timstof(self):
         """Test timsTOF detection logic."""
         timstof_names = [
@@ -293,21 +171,11 @@ class TestDecisionTreeHelperMethods:
             assert self.tree._is_timstof(name), f"Should detect {name} as timsTOF"
         
         non_timstof_names = [
-            "Orbitrap", "LTQ", "QTOF", "Synapt"
+            "Orbitrap", "LTQ", "QTOF", "Synapt", "Q Exactive"
         ]
         
         for name in non_timstof_names:
             assert not self.tree._is_timstof(name), f"Should NOT detect {name} as timsTOF"
-    
-    def test_is_profile_instrument(self):
-        """Test profile instrument detection."""
-        profile_instruments = [
-            "Orbitrap Fusion", "Q Exactive", "LTQ Velos",
-            "FT-ICR", "Synapt G2", "Waters Vion"
-        ]
-        
-        for instrument in profile_instruments:
-            assert self.tree._is_profile_instrument(instrument), f"Should detect {instrument} as profile"
     
     def test_is_bruker_metadata(self):
         """Test Bruker metadata detection."""
@@ -322,3 +190,36 @@ class TestDecisionTreeHelperMethods:
             "file_format": "mzML"
         }
         assert not self.tree._is_bruker_metadata(non_bruker_metadata)
+    
+    def test_detect_timstof_from_bruker_metadata(self):
+        """Test timsTOF detection from Bruker metadata."""
+        # Test with exact instrument name "timsTOF Maldi 2"
+        timstof_maldi_metadata = {
+            "GlobalMetadata": {
+                "InstrumentName": "timsTOF Maldi 2"
+            }
+        }
+        assert self.tree._detect_timstof_from_bruker_metadata(timstof_maldi_metadata)
+        
+        # Test with other instrument names should NOT be detected
+        other_metadata = {
+            "GlobalMetadata": {
+                "InstrumentName": "timsTOF Pro 2"
+            }
+        }
+        assert not self.tree._detect_timstof_from_bruker_metadata(other_metadata)
+        
+        non_timstof_metadata = {
+            "GlobalMetadata": {
+                "InstrumentName": "Quadrupole LC-MS"
+            }
+        }
+        assert not self.tree._detect_timstof_from_bruker_metadata(non_timstof_metadata)
+        
+        # Test without InstrumentName should not detect
+        empty_metadata = {
+            "GlobalMetadata": {
+                "SomeOtherKey": "value"
+            }
+        }
+        assert not self.tree._detect_timstof_from_bruker_metadata(empty_metadata)

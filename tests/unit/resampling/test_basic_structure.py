@@ -48,12 +48,16 @@ class TestBasicFunctionality:
     """Test basic functionality works."""
 
     def test_decision_tree_basic(self):
-        """Test decision tree returns a method."""
+        """Test decision tree throws NotImplementedError for unsupported cases."""
         tree = ResamplingDecisionTree()
-        method = tree.select_strategy(None)  # No metadata -> default
-        assert isinstance(method, ResamplingMethod)
-        # Default should be TIC_PRESERVING
-        assert method == ResamplingMethod.TIC_PRESERVING
+        
+        # No metadata should raise NotImplementedError
+        with pytest.raises(NotImplementedError):
+            tree.select_strategy(None)
+        
+        # Non-timsTOF should raise NotImplementedError  
+        with pytest.raises(NotImplementedError):
+            tree.select_strategy({"instrument_name": "Orbitrap Fusion"})
 
     def test_axis_builder_uniform(self):
         """Test uniform axis building."""

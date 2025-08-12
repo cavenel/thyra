@@ -5,15 +5,18 @@ This module provides functionality for resampling mass spectrometry imaging data
 to common mass axes, enabling consistent analysis across pixels and datasets.
 """
 
-from .decision_tree import ResamplingDecisionTree
 from .common_axis import CommonAxisBuilder
-from .types import ResamplingMethod, AxisType, MassAxis, ResamplingConfig
+from .decision_tree import ResamplingDecisionTree
+from .strategies import NearestNeighborStrategy, TICPreservingStrategy
+from .types import AxisType, MassAxis, ResamplingConfig, ResamplingMethod
 
 __all__ = [
-    "ResamplingDecisionTree", 
+    "ResamplingDecisionTree",
     "CommonAxisBuilder",
     "ResamplingMethod",
-    "AxisType", 
+    "AxisType",
     "MassAxis",
     "ResamplingConfig",
+    "NearestNeighborStrategy",
+    "TICPreservingStrategy",
 ]

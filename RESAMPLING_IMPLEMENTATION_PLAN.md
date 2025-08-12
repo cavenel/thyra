@@ -15,7 +15,7 @@ This document outlines the implementation plan for adding mass axis resampling/i
 ## Architecture Overview
 
 ```
-msi_processing/
+msiconvert/
 ├── resampling/
 │   ├── __init__.py
 │   ├── strategies/             # Resampling strategy implementations
