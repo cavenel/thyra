@@ -26,23 +26,61 @@ class TestSimplifiedDecisionTree:
         with pytest.raises(NotImplementedError):
             self.tree.select_strategy({})
     
-    def test_timstof_detection_by_name(self):
-        """Test timsTOF detection by instrument name."""
+    def test_timstof_detection_only_bruker_metadata(self):
+        """Test that timsTOF detection only works via Bruker metadata."""
+        # These should NOT be detected as timsTOF (only Bruker metadata detection)
         timstof_names = [
             "timsTOF Pro 2",
             "Bruker timsTOF",
             "TIMS-TOF CCS",
             "tims tof flex",
-            "TimsTOF Impact II",
-            "maxis impact hd",
-            "compact timstof"
+            "TimsTOF Impact II"
         ]
         
         for name in timstof_names:
             metadata = {"instrument_name": name}
-            method = self.tree.select_strategy(metadata)
-            assert method == ResamplingMethod.NEAREST_NEIGHBOR, f"Failed for {name}"
+            with pytest.raises(NotImplementedError) as exc_info:
+                self.tree.select_strategy(metadata)
+            assert name in str(exc_info.value)
+            assert "not yet implemented" in str(exc_info.value)
     
+    def test_imzml_centroid_spectrum_detection(self):
+        """Test exact ImzML centroid spectrum detection."""
+        # Test exact spectrum_type match
+        metadata = {"spectrum_type": "centroid spectrum"}
+        method = self.tree.select_strategy(metadata)
+        assert method == ResamplingMethod.NEAREST_NEIGHBOR
+        
+        # Test cvParam match
+        metadata = {
+            "cvParams": [
+                {"accession": "MS:1000127", "cvRef": "MS", "name": "centroid spectrum"}
+            ]
+        }
+        method = self.tree.select_strategy(metadata)
+        assert method == ResamplingMethod.NEAREST_NEIGHBOR
+
+    def test_non_exact_spectrum_types_raise_error(self):
+        """Test that non-exact spectrum types raise NotImplementedError."""
+        non_exact_types = [
+            "profile spectrum",
+            "profile",
+            "continuum", 
+            "raw",
+            "continuous",
+            "unprocessed",
+            "centroided",
+            "peak picked",
+            "peaks"
+        ]
+        
+        for spec_type in non_exact_types:
+            metadata = {"spectrum_type": spec_type}
+            with pytest.raises(NotImplementedError) as exc_info:
+                self.tree.select_strategy(metadata)
+            
+            assert "not yet implemented" in str(exc_info.value)
+
     def test_non_timstof_instruments_raise_error(self):
         """Test that non-timsTOF instruments raise NotImplementedError."""
         non_timstof_instruments = [
@@ -95,8 +133,8 @@ class TestSimplifiedDecisionTree:
         with pytest.raises(NotImplementedError):
             self.tree.select_strategy(non_bruker_metadata)
     
-    def test_metadata_key_variants(self):
-        """Test different metadata key variants for instrument name."""
+    def test_metadata_key_variants_raise_error(self):
+        """Test different metadata key variants for instrument name all raise error."""
         instrument_key_variants = [
             "instrument_name",
             "instrument",
@@ -110,23 +148,8 @@ class TestSimplifiedDecisionTree:
         
         for key in instrument_key_variants:
             metadata = {key: "timsTOF Pro"}
-            method = self.tree.select_strategy(metadata)
-            assert method == ResamplingMethod.NEAREST_NEIGHBOR, f"Failed for key {key}"
-    
-    def test_case_insensitive_detection(self):
-        """Test case insensitive timsTOF detection."""
-        case_variants = [
-            "TIMSTOF PRO",
-            "timstof pro",
-            "TimsTof Pro", 
-            "TIMS-TOF PRO",
-            "tImStOf PrO"
-        ]
-        
-        for variant in case_variants:
-            metadata = {"instrument_name": variant}
-            method = self.tree.select_strategy(metadata)
-            assert method == ResamplingMethod.NEAREST_NEIGHBOR, f"Failed for {variant}"
+            with pytest.raises(NotImplementedError):
+                self.tree.select_strategy(metadata)
     
     def test_empty_instrument_name_raises_error(self):
         """Test that empty instrument names raise NotImplementedError."""
@@ -160,22 +183,46 @@ class TestDecisionTreeHelperMethods:
         name = self.tree._extract_instrument_name({})
         assert name is None
     
-    def test_is_timstof(self):
-        """Test timsTOF detection logic."""
-        timstof_names = [
-            "timsTOF", "TIMS-TOF", "tims tof", "TimsTOF Pro",
-            "Impact II", "maxis 4G", "compact TOF", "flex TOF"
+    def test_extract_spectrum_type(self):
+        """Test spectrum type extraction."""
+        metadata = {"spectrum_type": "  centroid spectrum  "}
+        spec_type = self.tree._extract_spectrum_type(metadata)
+        assert spec_type == "centroid spectrum"  # Should be stripped and lowercased
+        
+        # Test None values
+        metadata = {"spectrum_type": None}
+        spec_type = self.tree._extract_spectrum_type(metadata)
+        assert spec_type is None
+        
+        # Test empty metadata
+        spec_type = self.tree._extract_spectrum_type({})
+        assert spec_type is None
+    
+    
+    def test_is_imzml_centroid_spectrum(self):
+        """Test exact ImzML centroid spectrum detection."""
+        # Test exact spectrum_type match
+        metadata = {"spectrum_type": "centroid spectrum"}
+        assert self.tree._is_imzml_centroid_spectrum(metadata)
+        
+        # Test cvParam match
+        metadata = {
+            "cvParams": [
+                {"accession": "MS:1000127", "cvRef": "MS", "name": "centroid spectrum"}
+            ]
+        }
+        assert self.tree._is_imzml_centroid_spectrum(metadata)
+        
+        # Test non-exact matches should return False
+        non_exact_metadata = [
+            {"spectrum_type": "centroided"},
+            {"spectrum_type": "profile spectrum"}, 
+            {"cvParams": [{"name": "profile spectrum"}]},
+            {}
         ]
         
-        for name in timstof_names:
-            assert self.tree._is_timstof(name), f"Should detect {name} as timsTOF"
-        
-        non_timstof_names = [
-            "Orbitrap", "LTQ", "QTOF", "Synapt", "Q Exactive"
-        ]
-        
-        for name in non_timstof_names:
-            assert not self.tree._is_timstof(name), f"Should NOT detect {name} as timsTOF"
+        for metadata in non_exact_metadata:
+            assert not self.tree._is_imzml_centroid_spectrum(metadata)
     
     def test_is_bruker_metadata(self):
         """Test Bruker metadata detection."""

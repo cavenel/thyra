@@ -42,22 +42,19 @@ class ResamplingDecisionTree:
                 "Currently only Bruker timsTOF detection is supported."
             )
 
-        # Check Bruker GlobalMetadata for timsTOF detection first (most specific)
+        # Check for ImzML centroid spectrum detection (exact cvParam match)
+        if self._is_imzml_centroid_spectrum(metadata):
+            logger.info("ImzML centroid spectrum detected, using NEAREST_NEIGHBOR strategy")
+            return ResamplingMethod.NEAREST_NEIGHBOR
+
+        # Check Bruker GlobalMetadata for timsTOF detection (for .d files)
         if self._is_bruker_metadata(metadata):
             if self._detect_timstof_from_bruker_metadata(metadata):
                 logger.info("timsTOF detected from Bruker metadata, using NEAREST_NEIGHBOR strategy")
                 return ResamplingMethod.NEAREST_NEIGHBOR
 
-        # Check for instrument name-based timsTOF detection
-        instrument_name = self._extract_instrument_name(metadata)
-        if instrument_name:
-            logger.debug(f"Detected instrument: {instrument_name}")
-            
-            if self._is_timstof(instrument_name):
-                logger.info(f"timsTOF instrument detected ({instrument_name}), using NEAREST_NEIGHBOR strategy")
-                return ResamplingMethod.NEAREST_NEIGHBOR
-
         # For now, everything else is not implemented
+        instrument_name = self._extract_instrument_name(metadata)
         if instrument_name:
             raise NotImplementedError(
                 f"Automatic strategy selection for instrument '{instrument_name}' not yet implemented. "
@@ -86,16 +83,36 @@ class ResamplingDecisionTree:
         
         return None
 
-
-    def _is_timstof(self, instrument_name: str) -> bool:
-        """Check if instrument is a Bruker timsTOF."""
-        instrument_lower = instrument_name.lower()
-        timstof_keywords = [
-            'timstof', 'tims-tof', 'tims tof', 'tofpro', 
-            'impact', 'maxis', 'compact', 'flex'
+    def _extract_spectrum_type(self, metadata: Dict[str, Any]) -> Optional[str]:
+        """Extract spectrum type from metadata (for ImzML files)."""
+        # Common keys for spectrum type information
+        spectrum_keys = [
+            'spectrum_type', 'data_type', 'acquisition_mode',
+            'SpectrumType', 'DataType', 'AcquisitionMode',
+            'ms_spectrum_type', 'spectrum_representation'
         ]
         
-        return any(keyword in instrument_lower for keyword in timstof_keywords)
+        for key in spectrum_keys:
+            if key in metadata and metadata[key]:
+                return str(metadata[key]).strip().lower()
+        
+        return None
+
+    def _is_imzml_centroid_spectrum(self, metadata: Dict[str, Any]) -> bool:
+        """Check for exact ImzML centroid spectrum cvParam."""
+        # Look for cvParam with exact name="centroid spectrum"
+        if 'cvParams' in metadata:
+            cv_params = metadata['cvParams']
+            if isinstance(cv_params, list):
+                for param in cv_params:
+                    if isinstance(param, dict) and param.get('name') == 'centroid spectrum':
+                        return True
+        
+        # Also check for spectrum_type containing exact match
+        if 'spectrum_type' in metadata:
+            return metadata['spectrum_type'] == 'centroid spectrum'
+            
+        return False
 
 
     def _is_bruker_metadata(self, metadata: Dict[str, Any]) -> bool:
