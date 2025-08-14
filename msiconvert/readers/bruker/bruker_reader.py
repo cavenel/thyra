@@ -8,7 +8,7 @@ import logging
 import os
 import sqlite3
 from pathlib import Path
-from typing import Callable, Dict, Generator, Optional, Tuple, Union
+from typing import Callable, Dict, Generator, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -38,7 +38,11 @@ logger = logging.getLogger(__name__)
 
 
 def build_raw_mass_axis(
-    spectra_iterator: Generator[Tuple[Tuple[int, int, int], NDArray[np.float64], NDArray[np.float64]], None, None],
+    spectra_iterator: Generator[
+        Tuple[Tuple[int, int, int], NDArray[np.float64], NDArray[np.float64]],
+        None,
+        None,
+    ],
     progress_callback: Optional[Callable[[int], None]] = None,
 ) -> NDArray[np.float64]:
     """Build raw mass axis from spectra iterator.
@@ -312,9 +316,11 @@ class BrukerReader(BaseMSIReader):
         logger.info(f"Built raw mass axis with {len(mass_axis)} unique m/z values")
         return mass_axis
 
-    def iter_spectra(
-        self, batch_size: Optional[int] = None
-    ) -> Generator[Tuple[Tuple[int, int, int], NDArray[np.float64], NDArray[np.float64]], None, None]:
+    def iter_spectra(self, batch_size: Optional[int] = None) -> Generator[
+        Tuple[Tuple[int, int, int], NDArray[np.float64], NDArray[np.float64]],
+        None,
+        None,
+    ]:
         """Iterate through all spectra sequentially.
 
         Args:
@@ -328,7 +334,11 @@ class BrukerReader(BaseMSIReader):
 
     def _iter_spectra_raw(
         self,
-    ) -> Generator[Tuple[Tuple[int, int, int], NDArray[np.float64], NDArray[np.float64]], None, None]:
+    ) -> Generator[
+        Tuple[Tuple[int, int, int], NDArray[np.float64], NDArray[np.float64]],
+        None,
+        None,
+    ]:
         """Raw spectrum iteration without batching."""
         frame_count = self._get_frame_count()
         coordinate_offsets = self._get_coordinate_offsets()
@@ -549,4 +559,6 @@ class BrukerReader(BaseMSIReader):
         try:
             self.close()
         except Exception as e:
-            logger.debug(f"Error during cleanup in destructor: {e}")  # Log but don't raise during destruction
+            logger.debug(
+                f"Error during cleanup in destructor: {e}"
+            )  # Log but don't raise during destruction

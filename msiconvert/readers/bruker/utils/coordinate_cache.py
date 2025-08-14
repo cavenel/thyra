@@ -173,9 +173,7 @@ class CoordinateCache:
         if range_key in self._loaded_ranges:
             return
 
-        logger.debug(
-            f"Loading coordinates for frames {start_frame}-{end_frame}"
-        )
+        logger.debug(f"Loading coordinates for frames {start_frame}-{end_frame}")
 
         try:
             with sqlite3.connect(str(self.db_path)) as conn:
@@ -214,9 +212,7 @@ class CoordinateCache:
                             )
 
                 self._loaded_ranges.add(range_key)
-                logger.debug(
-                    f"Loaded {end_frame - start_frame + 1} coordinates"
-                )
+                logger.debug(f"Loaded {end_frame - start_frame + 1} coordinates")
 
         except Exception as e:
             logger.error(f"Error loading coordinate range: {e}")
@@ -234,9 +230,7 @@ class CoordinateCache:
         # Check if coordinate is already cached
         if frame_id in self._coordinates:
             coord_info = self._coordinates[frame_id]
-            return self._normalize_coordinate(
-                coord_info.x, coord_info.y, coord_info.z
-            )
+            return self._normalize_coordinate(coord_info.x, coord_info.y, coord_info.z)
 
         # Try to load a small range around this frame
         batch_size = 100
@@ -248,16 +242,12 @@ class CoordinateCache:
         # Check again after loading
         if frame_id in self._coordinates:
             coord_info = self._coordinates[frame_id]
-            return self._normalize_coordinate(
-                coord_info.x, coord_info.y, coord_info.z
-            )
+            return self._normalize_coordinate(coord_info.x, coord_info.y, coord_info.z)
 
         logger.warning(f"Coordinate not found for frame {frame_id}")
         return None
 
-    def _normalize_coordinate(
-        self, x: int, y: int, z: int
-    ) -> Tuple[int, int, int]:
+    def _normalize_coordinate(self, x: int, y: int, z: int) -> Tuple[int, int, int]:
         """
         Normalize coordinates to 0-based indexing.
 
@@ -351,14 +341,10 @@ class CoordinateCache:
                     if min_frame and max_frame:
                         self._load_coordinate_range(min_frame, max_frame)
             except Exception as e:
-                logger.error(
-                    f"Error loading frames for dimension calculation: {e}"
-                )
+                logger.error(f"Error loading frames for dimension calculation: {e}")
 
         if not self._coordinates:
-            logger.warning(
-                "No coordinates available for dimension calculation"
-            )
+            logger.warning("No coordinates available for dimension calculation")
             return (1, 1, 1)
 
         # Calculate dimensions from normalized coordinates
@@ -432,8 +418,7 @@ class CoordinateCache:
         frames_to_keep = sorted_frames[-keep_recent:]
 
         new_coordinates = {
-            frame_id: self._coordinates[frame_id]
-            for frame_id in frames_to_keep
+            frame_id: self._coordinates[frame_id] for frame_id in frames_to_keep
         }
 
         removed_count = len(self._coordinates) - len(new_coordinates)

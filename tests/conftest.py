@@ -73,12 +73,8 @@ def mock_reader():
                     # Create simple synthetic spectrum
                     intensities = np.zeros_like(mass_axis)
                     # Add a few peaks
-                    intensities[x * 10 + 20] = (
-                        100.0  # Peak varying by x position
-                    )
-                    intensities[y * 10 + 50] = (
-                        200.0  # Peak varying by y position
-                    )
+                    intensities[x * 10 + 20] = 100.0  # Peak varying by x position
+                    intensities[y * 10 + 50] = 200.0  # Peak varying by y position
                     yield ((x, y, 0), mass_axis, intensities)
 
         def close(self):

@@ -21,18 +21,18 @@ class NearestNeighborStrategy(ResamplingStrategy):
     ) -> Spectrum:
         """
         Resample spectrum using nearest neighbor interpolation.
-        
+
         For each target m/z value, finds the nearest original m/z value
         and assigns its intensity. This preserves the discrete nature
         of centroid data.
-        
+
         Parameters
         ----------
         spectrum : Spectrum
             Input spectrum to resample
         target_axis : npt.NDArray[np.floating[Any]]
             Target mass axis values
-            
+
         Returns
         -------
         Spectrum
@@ -44,19 +44,19 @@ class NearestNeighborStrategy(ResamplingStrategy):
                 mz=target_axis.copy(),
                 intensity=np.zeros_like(target_axis),
                 coordinates=spectrum.coordinates,
-                metadata=spectrum.metadata
+                metadata=spectrum.metadata,
             )
-        
+
         # Find nearest neighbors for each target m/z
         # np.searchsorted finds insertion points, we need to check both sides
-        indices = np.searchsorted(spectrum.mz, target_axis, side='left')
-        
+        indices = np.searchsorted(spectrum.mz, target_axis, side="left")
+
         # Clip indices to valid range
         indices = np.clip(indices, 0, len(spectrum.mz) - 1)
-        
+
         # For each target point, check if the left or right neighbor is closer
         resampled_intensity = np.zeros_like(target_axis)
-        
+
         for i, (target_mz, idx) in enumerate(zip(target_axis, indices)):
             # Check boundaries
             if idx == 0:
@@ -69,17 +69,17 @@ class NearestNeighborStrategy(ResamplingStrategy):
                 # Check which neighbor is closer
                 left_dist = abs(target_mz - spectrum.mz[idx - 1])
                 right_dist = abs(target_mz - spectrum.mz[idx])
-                
+
                 if left_dist <= right_dist:
                     nearest_idx = idx - 1
                 else:
                     nearest_idx = idx
-            
+
             resampled_intensity[i] = spectrum.intensity[nearest_idx]
-        
+
         return Spectrum(
             mz=target_axis.copy(),
             intensity=resampled_intensity,
             coordinates=spectrum.coordinates,
-            metadata=spectrum.metadata
+            metadata=spectrum.metadata,
         )

@@ -52,6 +52,37 @@ def _create_argument_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--log-file", default=None, help="Path to the log file")
 
+    # Resampling arguments
+    parser.add_argument(
+        "--resample",
+        action="store_true",
+        help="Enable mass axis resampling/harmonization",
+    )
+    parser.add_argument(
+        "--resample-method",
+        choices=["auto", "nearest_neighbor", "tic_preserving"],
+        default="auto",
+        help="Resampling method: auto (detect from metadata), nearest_neighbor (for centroid data), tic_preserving (for profile data)",
+    )
+    parser.add_argument(
+        "--resample-bins",
+        type=int,
+        default=5000,
+        help="Number of bins for resampled mass axis (default: 5000)",
+    )
+    parser.add_argument(
+        "--resample-min-mz",
+        type=float,
+        default=None,
+        help="Minimum m/z for resampled axis (default: auto-detect from data)",
+    )
+    parser.add_argument(
+        "--resample-max-mz",
+        type=float,
+        default=None,
+        help="Maximum m/z for resampled axis (default: auto-detect from data)",
+    )
+
     return parser
 
 
@@ -62,6 +93,31 @@ def _validate_arguments(parser: argparse.ArgumentParser, args) -> None:
 
     if not args.dataset_id.strip():
         parser.error("Dataset ID cannot be empty")
+
+    # Validate resampling arguments
+    if args.resample_bins <= 0:
+        parser.error(
+            "Number of resampling bins must be positive (got: {})".format(
+                args.resample_bins
+            )
+        )
+
+    if args.resample_min_mz is not None and args.resample_min_mz <= 0:
+        parser.error(
+            "Minimum m/z must be positive (got: {})".format(args.resample_min_mz)
+        )
+
+    if args.resample_max_mz is not None and args.resample_max_mz <= 0:
+        parser.error(
+            "Maximum m/z must be positive (got: {})".format(args.resample_max_mz)
+        )
+
+    if (
+        args.resample_min_mz is not None
+        and args.resample_max_mz is not None
+        and args.resample_min_mz >= args.resample_max_mz
+    ):
+        parser.error("Minimum m/z must be less than maximum m/z")
 
 
 def _check_imzml_requirements(
@@ -107,6 +163,16 @@ def _validate_output_path(parser: argparse.ArgumentParser, output_path: Path) ->
 
 def _perform_conversion(args) -> bool:
     """Perform the MSI data conversion."""
+    # Build resampling config if enabled
+    resampling_config = None
+    if args.resample:
+        resampling_config = {
+            "method": args.resample_method,
+            "target_bins": args.resample_bins,
+            "min_mz": args.resample_min_mz,
+            "max_mz": args.resample_max_mz,
+        }
+
     return convert_msi(
         args.input,
         args.output,
@@ -114,6 +180,7 @@ def _perform_conversion(args) -> bool:
         dataset_id=args.dataset_id,
         pixel_size_um=args.pixel_size,
         handle_3d=args.handle_3d,
+        resampling_config=resampling_config,
     )
 
 

@@ -436,3 +436,14 @@ class ImzMLReader(BaseMSIReader):
         # Use parser coordinates which is efficient
         parser = cast(ImzMLParser, self.parser)
         return len(parser.coordinates)  # type: ignore
+
+    @property
+    def mass_range(self) -> Tuple[float, float]:
+        """Return the mass range (min_mz, max_mz) of the dataset.
+
+        Returns:
+            Tuple of (min_mz, max_mz) values
+        """
+        # Get mass range from essential metadata
+        essential_metadata = self.get_essential_metadata()
+        return essential_metadata.mass_range

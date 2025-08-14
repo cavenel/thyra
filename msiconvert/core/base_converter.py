@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from os import PathLike
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -279,7 +279,6 @@ class BaseMSIConverter(ABC):
                 "source_path": comprehensive_metadata.essential.source_path,
                 "is_3d": comprehensive_metadata.essential.is_3d,
                 "has_pixel_size": comprehensive_metadata.essential.has_pixel_size,
-                "spatial_extent": comprehensive_metadata.essential.spatial_extent,
             },
             # Format-specific metadata from source
             "format_specific_metadata": comprehensive_metadata.format_specific,
@@ -444,18 +443,39 @@ class BaseMSIConverter(ABC):
             raise ValueError("Common mass axis is not initialized.")
 
         if mz_indices.size == 0 or intensities.size == 0:
+            logging.debug(
+                f"Empty data for pixel {pixel_idx}: {mz_indices.size} indices, {intensities.size} intensities"
+            )
             return
 
         n_masses = len(self._common_mass_axis)
 
         # Filter out invalid indices and zero intensities in a single pass
         valid_mask = (mz_indices < n_masses) & (intensities > 0)
+
+        logging.info(
+            f"Pixel {pixel_idx}: {len(mz_indices)} input indices, {np.sum(valid_mask)} valid after filtering"
+        )
+        logging.info(
+            f"  Index bounds check: {np.sum(mz_indices < n_masses)}/{len(mz_indices)}"
+        )
+        logging.info(
+            f"  Intensity > 0 check: {np.sum(intensities > 0)}/{len(intensities)}"
+        )
+
         if not np.any(valid_mask):
+            logging.info(f"No valid data to store for pixel {pixel_idx}")
             return
 
         # Extract valid values
         valid_indices = mz_indices[valid_mask]
         valid_intensities = intensities[valid_mask]
 
+        logging.info(
+            f"Storing {len(valid_indices)} values for pixel {pixel_idx}, intensity sum: {np.sum(valid_intensities):.2e}"
+        )
+
         # Use bulk assignment for better performance
         sparse_matrix[pixel_idx, valid_indices] = valid_intensities
+
+        logging.info(f"After storage - matrix nnz: {sparse_matrix.nnz}")

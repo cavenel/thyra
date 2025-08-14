@@ -39,17 +39,13 @@ class TestOptimizeZarrChunks:
         assert result is True
         # Update the expectation to match the actual code (mode='a')
         mock_zarr.open_group.assert_called_with(str(zarr_path), mode="a")
-        mock_da.from_array.assert_called_with(
-            mock_array, chunks=mock_array.chunks
-        )
+        mock_da.from_array.assert_called_with(mock_array, chunks=mock_array.chunks)
         mock_dask_array.rechunk.assert_called_once()
         mock_da.to_zarr.assert_called_once()
 
     @patch("msiconvert.utils.data_processors.zarr")
     @patch("msiconvert.utils.data_processors.da")
-    def test_optimize_zarr_chunks_with_output_path(
-        self, mock_da, mock_zarr, temp_dir
-    ):
+    def test_optimize_zarr_chunks_with_output_path(self, mock_da, mock_zarr, temp_dir):
         """Test chunk optimization with separate output path."""
         zarr_path = temp_dir / "input.zarr"
         output_path = temp_dir / "output.zarr"
@@ -114,9 +110,7 @@ class TestOptimizeZarrChunks:
         mock_dask_array.rechunk.return_value = mock_dask_array
 
         # Run optimization
-        result = optimize_zarr_chunks(
-            str(zarr_path), array_path, chunks=custom_chunks
-        )
+        result = optimize_zarr_chunks(str(zarr_path), array_path, chunks=custom_chunks)
 
         # Check results
         assert result is True
@@ -124,9 +118,7 @@ class TestOptimizeZarrChunks:
 
     @patch("msiconvert.utils.data_processors.zarr")
     @patch("msiconvert.utils.data_processors.da")
-    def test_optimize_zarr_chunks_with_compressor(
-        self, mock_da, mock_zarr, temp_dir
-    ):
+    def test_optimize_zarr_chunks_with_compressor(self, mock_da, mock_zarr, temp_dir):
         """Test chunk optimization with custom compressor."""
         zarr_path = temp_dir / "test.zarr"
         array_path = "test_array"
@@ -164,9 +156,7 @@ class TestOptimizeZarrChunks:
 
     @patch("msiconvert.utils.data_processors.zarr")
     @patch("msiconvert.utils.data_processors.da")
-    def test_optimize_zarr_chunks_with_rename(
-        self, mock_da, mock_zarr, temp_dir
-    ):
+    def test_optimize_zarr_chunks_with_rename(self, mock_da, mock_zarr, temp_dir):
         """Test chunk optimization with renaming in the same store."""
         zarr_path = temp_dir / "test.zarr"
         array_path = "test_array"

@@ -2,7 +2,7 @@
 """Validate ontology terms in imzML files."""
 
 import logging
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET  # nosec B405
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -23,14 +23,12 @@ class ImzMLOntologyValidator:
         logger.info(f"Validating ontology terms in {imzml_path}")
 
         # Parse XML
-        tree = ET.parse(imzml_path)
+        tree = ET.parse(imzml_path)  # nosec B314
         root = tree.getroot()
 
         # Find all cvParam elements
         ns = {"mzml": "http://psi.hupo.org/ms/mzml"}
-        cv_params = root.findall(".//mzml:cvParam", ns) or root.findall(
-            ".//cvParam"
-        )
+        cv_params = root.findall(".//mzml:cvParam", ns) or root.findall(".//cvParam")
 
         results = {
             "total_terms": 0,
@@ -66,9 +64,7 @@ class ImzMLOntologyValidator:
                         "accession": accession,
                         "name": name,
                         "value": value,
-                        "validation_url": ONTOLOGY.validate_against_online(
-                            accession
-                        ),
+                        "validation_url": ONTOLOGY.validate_against_online(accession),
                     }
                 )
 
@@ -142,9 +138,7 @@ class ImzMLOntologyValidator:
                     lines.append(f"  Check: {term['validation_url']}")
 
             if len(results["unknown_list"]) > 10:
-                lines.append(
-                    f"... and {len(results['unknown_list']) - 10} more"
-                )
+                lines.append(f"... and {len(results['unknown_list']) - 10} more")
 
         return "\n".join(lines)
 

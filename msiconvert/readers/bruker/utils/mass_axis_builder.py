@@ -71,9 +71,7 @@ class MassAxisBuilder:
         logger.info(f"Building mass axis using strategy: {strategy}")
 
         if strategy == "memory_efficient":
-            return self._build_memory_efficient(
-                spectra_iterator, total_spectra
-            )
+            return self._build_memory_efficient(spectra_iterator, total_spectra)
         elif strategy == "fast":
             return self._build_fast(spectra_iterator, total_spectra)
         elif strategy == "streaming":
@@ -327,17 +325,13 @@ class MassAxisBuilder:
         logger.info(f"Building mass axis with {tolerance_ppm} ppm tolerance")
 
         # First build regular mass axis
-        unique_mzs = self.build_from_spectra_iterator(
-            spectra_iterator, total_spectra
-        )
+        unique_mzs = self.build_from_spectra_iterator(spectra_iterator, total_spectra)
 
         if len(unique_mzs) == 0:
             return unique_mzs
 
         # Apply tolerance-based consolidation
-        consolidated_mzs = self._consolidate_with_tolerance(
-            unique_mzs, tolerance_ppm
-        )
+        consolidated_mzs = self._consolidate_with_tolerance(unique_mzs, tolerance_ppm)
 
         logger.info(
             f"Consolidated from {len(unique_mzs)} to {len(consolidated_mzs)} m/z values"

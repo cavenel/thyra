@@ -37,9 +37,7 @@ class BrukerReaderTester:
         self.results = {}
         self.errors = []
 
-        print(
-            f"Initializing BrukerReaderTester with data: {self.test_data_path}"
-        )
+        print(f"Initializing BrukerReaderTester with data: {self.test_data_path}")
 
     def run_all_tests(self) -> Dict[str, Any]:
         """
@@ -172,9 +170,7 @@ class BrukerReaderTester:
             dimensions = reader.get_dimensions()
 
             assert len(dimensions) == 3, "Dimensions should be 3-tuple"
-            assert all(
-                d > 0 for d in dimensions
-            ), "All dimensions should be positive"
+            assert all(d > 0 for d in dimensions), "All dimensions should be positive"
 
             x, y, z = dimensions
 
@@ -188,17 +184,13 @@ class BrukerReaderTester:
 
     def test_coordinate_access(self) -> Dict[str, Any]:
         """Test coordinate caching and access."""
-        with BrukerReader(
-            self.test_data_path, cache_coordinates=True
-        ) as reader:
+        with BrukerReader(self.test_data_path, cache_coordinates=True) as reader:
             # Test coordinate access
             coord_cache = reader.coordinate_cache
 
             # Test getting a single coordinate
             coord = coord_cache.get_coordinate(1)
-            assert (
-                coord is not None
-            ), "Should be able to get coordinate for frame 1"
+            assert coord is not None, "Should be able to get coordinate for frame 1"
             assert len(coord) == 3, "Coordinate should be 3-tuple"
 
             # Test batch coordinate access
@@ -253,13 +245,9 @@ class BrukerReaderTester:
         with BrukerReader(self.test_data_path) as reader:
             mass_axis = reader.get_common_mass_axis()
 
-            assert isinstance(
-                mass_axis, np.ndarray
-            ), "Mass axis should be numpy array"
+            assert isinstance(mass_axis, np.ndarray), "Mass axis should be numpy array"
             assert len(mass_axis) > 0, "Mass axis should not be empty"
-            assert np.all(
-                np.diff(mass_axis) >= 0
-            ), "Mass axis should be sorted"
+            assert np.all(np.diff(mass_axis) >= 0), "Mass axis should be sorted"
 
             return {
                 "mass_axis_length": len(mass_axis),
@@ -383,9 +371,7 @@ class BrukerReaderTester:
         print(f"{'=' * 80}")
 
         total_tests = len(self.results)
-        passed_tests = sum(
-            1 for r in self.results.values() if r["status"] == "PASSED"
-        )
+        passed_tests = sum(1 for r in self.results.values() if r["status"] == "PASSED")
         failed_tests = total_tests - passed_tests
 
         print(f"Total Tests: {total_tests}")
@@ -408,15 +394,11 @@ class BrukerReaderTester:
 def main():
     """Main test function."""
     # Test data path - update this to your actual test data
-    test_data_path = (
-        r"C:\Users\tvisv\Downloads\MSIConverter\20231109_PEA_NEDC_bruker.d"
-    )
+    test_data_path = r"C:\Users\tvisv\Downloads\MSIConverter\20231109_PEA_NEDC_bruker.d"
 
     if not Path(test_data_path).exists():
         print(f"❌ Test data not found at: {test_data_path}")
-        print(
-            "Please update the test_data_path variable with the correct path."
-        )
+        print("Please update the test_data_path variable with the correct path.")
         return
 
     print(f"Using test data: {test_data_path}")
