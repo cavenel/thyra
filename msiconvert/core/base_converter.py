@@ -2,7 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from os import PathLike
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -279,7 +279,6 @@ class BaseMSIConverter(ABC):
                 "source_path": comprehensive_metadata.essential.source_path,
                 "is_3d": comprehensive_metadata.essential.is_3d,
                 "has_pixel_size": comprehensive_metadata.essential.has_pixel_size,
-                "spatial_extent": comprehensive_metadata.essential.spatial_extent,
             },
             # Format-specific metadata from source
             "format_specific_metadata": comprehensive_metadata.format_specific,
@@ -307,11 +306,11 @@ class BaseMSIConverter(ABC):
     # --- Common Utility Methods ---
 
     def _create_sparse_matrix(self) -> sparse.lil_matrix:
-        """Create a sparse matrix for storing spectral data.
+        """Create sparse matrix for storing intensity values.
 
         Returns:
         --------
-        sparse.lil_matrix: Empty sparse matrix sized for the dataset
+        sparse.lil_matrix: Sparse matrix for storing intensity values
         """
         if self._dimensions is None:
             raise ValueError("Dimensions are not initialized.")
@@ -324,6 +323,7 @@ class BaseMSIConverter(ABC):
         logging.info(
             f"Creating sparse matrix for {n_pixels} pixels and {n_masses} mass values"
         )
+
         return sparse.lil_matrix((n_pixels, n_masses), dtype=np.float64)
 
     def _create_coordinates_dataframe(self) -> pd.DataFrame:
@@ -444,18 +444,43 @@ class BaseMSIConverter(ABC):
             raise ValueError("Common mass axis is not initialized.")
 
         if mz_indices.size == 0 or intensities.size == 0:
+            logging.debug(
+                f"Empty data for pixel {pixel_idx}: {mz_indices.size} indices, "
+                f"{intensities.size} intensities"
+            )
             return
 
         n_masses = len(self._common_mass_axis)
 
         # Filter out invalid indices and zero intensities in a single pass
         valid_mask = (mz_indices < n_masses) & (intensities > 0)
+
+        logging.info(
+            f"Pixel {pixel_idx}: {len(mz_indices)} input indices, "
+            f"{np.sum(valid_mask)} valid after filtering"
+        )
+        logging.info(
+            f"  Index bounds check: {np.sum(mz_indices < n_masses)}/"
+            f"{len(mz_indices)}"
+        )
+        logging.info(
+            f"  Intensity > 0 check: {np.sum(intensities > 0)}/" f"{len(intensities)}"
+        )
+
         if not np.any(valid_mask):
+            logging.info(f"No valid data to store for pixel {pixel_idx}")
             return
 
         # Extract valid values
         valid_indices = mz_indices[valid_mask]
         valid_intensities = intensities[valid_mask]
 
+        logging.info(
+            f"Storing {len(valid_indices)} values for pixel {pixel_idx}, "
+            f"intensity sum: {np.sum(valid_intensities):.2e}"
+        )
+
         # Use bulk assignment for better performance
         sparse_matrix[pixel_idx, valid_indices] = valid_intensities
+
+        logging.info(f"After storage - matrix nnz: {sparse_matrix.nnz}")

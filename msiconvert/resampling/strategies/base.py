@@ -33,7 +33,9 @@ class ResamplingStrategy(ABC):
     """Abstract base class for resampling strategies."""
 
     @abstractmethod
-    def resample(self, spectrum: Spectrum, target_axis: npt.NDArray[np.floating[Any]]) -> Spectrum:
+    def resample(
+        self, spectrum: Spectrum, target_axis: npt.NDArray[np.floating[Any]]
+    ) -> Spectrum:
         """
         Resample spectrum to target mass axis.
 

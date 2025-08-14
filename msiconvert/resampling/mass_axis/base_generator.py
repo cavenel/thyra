@@ -37,7 +37,11 @@ class BaseAxisGenerator(ABC):
 
     @abstractmethod
     def generate_axis_width(
-        self, min_mz: float, max_mz: float, width_da: float, reference_mz: float = 500.0
+        self,
+        min_mz: float,
+        max_mz: float,
+        width_da: float,
+        reference_mz: float = 500.0,
     ) -> npt.NDArray[np.floating[Any]]:
         """
         Generate axis based on mass width at reference m/z using analyzer physics.

@@ -116,9 +116,7 @@ class TestCommandLineInterface:
             handle_3d_value = kwargs.get("handle_3d", False)
             return True
 
-        monkeypatch.setattr(
-            "msiconvert.__main__.convert_msi", mock_convert_msi
-        )
+        monkeypatch.setattr("msiconvert.__main__.convert_msi", mock_convert_msi)
 
         # Set up command line arguments with 3D handling
         sys.argv = [
@@ -154,9 +152,7 @@ class TestCommandLineInterface:
             nonlocal configured_level
             configured_level = log_level
 
-        monkeypatch.setattr(
-            "msiconvert.__main__.setup_logging", mock_setup_logging
-        )
+        monkeypatch.setattr("msiconvert.__main__.setup_logging", mock_setup_logging)
 
         # Mock convert_msi to always return True
         monkeypatch.setattr(

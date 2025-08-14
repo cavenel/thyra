@@ -18,11 +18,7 @@ else:
     windll = None
 
 from ....utils.bruker_exceptions import SDKError
-from .platform_detector import (
-    PlatformDetector,
-    get_dll_paths,
-    validate_library_path,
-)
+from .platform_detector import PlatformDetector, get_dll_paths, validate_library_path
 
 logger = logging.getLogger(__name__)
 
@@ -102,9 +98,7 @@ class DLLManager:
 
         # If no library found, try generic loading (rely on system PATH)
         try:
-            library_name = (
-                "timsdata" if platform_name == "windows" else "libtimsdata"
-            )
+            library_name = "timsdata" if platform_name == "windows" else "libtimsdata"
             self._dll = self._load_library_by_name(library_name)
             self._library_path = Path(library_name)
             logger.info(

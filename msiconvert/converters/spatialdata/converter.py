@@ -25,6 +25,7 @@ class SpatialDataConverter:
         pixel_size_um: float = 1.0,
         handle_3d: bool = False,
         pixel_size_detection_info: Optional[Dict[str, Any]] = None,
+        resampling_config: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ):
         """Create appropriate converter based on handle_3d parameter and data dimensions.
@@ -36,6 +37,7 @@ class SpatialDataConverter:
             pixel_size_um: Size of each pixel in micrometers
             handle_3d: Whether to process as 3D data (True) or 2D slices (False)
             pixel_size_detection_info: Optional metadata about pixel size detection
+            resampling_config: Optional resampling configuration dict
             **kwargs: Additional keyword arguments
 
         Returns:
@@ -47,23 +49,36 @@ class SpatialDataConverter:
         # Check if we have 3D data and determine converter type
         dimensions = reader.get_essential_metadata().dimensions
         if dimensions[2] > 1 and not handle_3d:
-            # 3D data treated as 2D slices
+            # Multi-slice 3D data treated as 2D slices
             return SpatialData2DConverter(
                 reader=reader,
                 output_path=output_path,
                 dataset_id=dataset_id,
                 pixel_size_um=pixel_size_um,
                 pixel_size_detection_info=pixel_size_detection_info,
+                resampling_config=resampling_config,
+                **kwargs,
+            )
+        elif dimensions[2] == 1:
+            # Single 2D slice - always use 2D converter
+            return SpatialData2DConverter(
+                reader=reader,
+                output_path=output_path,
+                dataset_id=dataset_id,
+                pixel_size_um=pixel_size_um,
+                pixel_size_detection_info=pixel_size_detection_info,
+                resampling_config=resampling_config,
                 **kwargs,
             )
         else:
-            # True 3D data or single 2D slice
+            # True 3D volume (dimensions[2] > 1 and handle_3d=True)
             return SpatialData3DConverter(
                 reader=reader,
                 output_path=output_path,
                 dataset_id=dataset_id,
                 pixel_size_um=pixel_size_um,
                 pixel_size_detection_info=pixel_size_detection_info,
+                resampling_config=resampling_config,
                 **kwargs,
             )
 

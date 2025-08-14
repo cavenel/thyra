@@ -8,26 +8,16 @@ class EssentialMetadata:
     """Critical metadata for processing decisions and interpolation setup."""
 
     dimensions: Tuple[int, int, int]  # (x, y, z) grid dimensions
-    coordinate_bounds: Tuple[
-        float, float, float, float
-    ]  # min_x, max_x, min_y, max_y
+    coordinate_bounds: Tuple[float, float, float, float]  # min_x, max_x, min_y, max_y
     mass_range: Tuple[float, float]  # (min_mass, max_mass)
-    pixel_size: Optional[
-        Tuple[float, float]
-    ]  # (x_size, y_size) in micrometers
+    pixel_size: Optional[Tuple[float, float]]  # (x_size, y_size) in micrometers
     n_spectra: int  # Total number of spectra
     estimated_memory_gb: float  # Memory usage estimate
     source_path: str  # Path to source data
     # (x_offset, y_offset, z_offset) for raw coordinate normalization
     coordinate_offsets: Optional[Tuple[int, int, int]] = None
-
-    @property
-    def spatial_extent(self) -> Tuple[float, float]:
-        """Calculate spatial extent for interpolation grid setup."""
-        return (
-            self.coordinate_bounds[1] - self.coordinate_bounds[0],  # x extent
-            self.coordinate_bounds[3] - self.coordinate_bounds[2],  # y extent
-        )
+    # Spectrum type for resampling decisions (e.g., "centroid spectrum")
+    spectrum_type: Optional[str] = None
 
     @property
     def has_pixel_size(self) -> bool:

@@ -50,12 +50,12 @@ class TestBasicFunctionality:
     def test_decision_tree_basic(self):
         """Test decision tree throws NotImplementedError for unsupported cases."""
         tree = ResamplingDecisionTree()
-        
+
         # No metadata should raise NotImplementedError
         with pytest.raises(NotImplementedError):
             tree.select_strategy(None)
-        
-        # Non-timsTOF should raise NotImplementedError  
+
+        # Non-timsTOF should raise NotImplementedError
         with pytest.raises(NotImplementedError):
             tree.select_strategy({"instrument_name": "Orbitrap Fusion"})
 

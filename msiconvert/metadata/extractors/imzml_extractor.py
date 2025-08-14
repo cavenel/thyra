@@ -1,7 +1,7 @@
 # msiconvert/metadata/extractors/imzml_extractor.py
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 from numpy.typing import NDArray
@@ -38,10 +38,13 @@ class ImzMLMetadataExtractor(MetadataExtractor):
 
         dimensions = self._calculate_dimensions(coords)
         coordinate_bounds = self._calculate_bounds(coords)
-        mass_range = self._get_mass_range_fast()
+        mass_range = self._get_mass_range_complete()
         pixel_size = self._extract_pixel_size_fast()
         n_spectra = len(coords)
         estimated_memory = self._estimate_memory(n_spectra)
+
+        # Check for centroid spectrum
+        spectrum_type = self._detect_centroid_spectrum()
 
         return EssentialMetadata(
             dimensions=dimensions,
@@ -51,6 +54,7 @@ class ImzMLMetadataExtractor(MetadataExtractor):
             n_spectra=n_spectra,
             estimated_memory_gb=estimated_memory,
             source_path=str(self.imzml_path),
+            spectrum_type=spectrum_type,  # Add spectrum type to essential metadata
         )
 
     def _extract_comprehensive_impl(self) -> ComprehensiveMetadata:
@@ -65,9 +69,7 @@ class ImzMLMetadataExtractor(MetadataExtractor):
             raw_metadata=self._extract_raw_metadata(),
         )
 
-    def _calculate_dimensions(
-        self, coords: NDArray[np.int_]
-    ) -> Tuple[int, int, int]:
+    def _calculate_dimensions(self, coords: NDArray[np.int_]) -> Tuple[int, int, int]:
         """Calculate dataset dimensions from coordinates."""
         if len(coords) == 0:
             return (0, 0, 0)
@@ -100,41 +102,52 @@ class ImzMLMetadataExtractor(MetadataExtractor):
             float(np.max(y_coords)),
         )
 
-    def _get_mass_range_fast(self) -> Tuple[float, float]:
-        """Fast mass range extraction using first and last spectrum."""
+    def _get_mass_range_complete(self) -> Tuple[float, float]:
+        """Complete mass range extraction by scanning ALL spectra.
+
+        Required for resampling to ensure no m/z values are missed.
+        """
         try:
-            # Get mass range from first spectrum
-            first_mzs, _ = self.parser.getspectrum(0)
-            if len(first_mzs) == 0:
-                return (0.0, 1000.0)  # Default range
+            logger.info("Scanning ALL spectra for complete mass range...")
 
-            min_mass = float(np.min(first_mzs))
-            max_mass = float(np.max(first_mzs))
-
-            # Check a few more spectra to get better range estimate
             n_spectra = len(self.parser.coordinates)
-            check_indices = [
-                n_spectra // 4,
-                n_spectra // 2,
-                3 * n_spectra // 4,
-                n_spectra - 1,
-            ]
+            min_mass = float("inf")
+            max_mass = float("-inf")
 
-            for idx in check_indices:
-                if idx < n_spectra and idx != 0:
+            from tqdm import tqdm
+
+            with tqdm(
+                total=n_spectra, desc="Scanning mass range", unit="spectrum"
+            ) as pbar:
+                for idx in range(n_spectra):
                     try:
                         mzs, _ = self.parser.getspectrum(idx)
                         if len(mzs) > 0:
                             min_mass = min(min_mass, float(np.min(mzs)))
                             max_mass = max(max_mass, float(np.max(mzs)))
-                    except Exception:
+                    except Exception as e:
+                        logger.debug(f"Failed to read spectrum {idx}: {e}")
                         continue  # Skip problematic spectra
+                    pbar.update(1)
 
+            if min_mass == float("inf"):
+                logger.warning("No valid spectra found")
+                return (0.0, 1000.0)
+
+            logger.info(f"Complete mass range: {min_mass:.2f} - {max_mass:.2f} m/z")
             return (min_mass, max_mass)
 
         except Exception as e:
-            logger.warning(f"Failed to extract mass range: {e}")
-            return (0.0, 1000.0)  # Default range
+            logger.error(f"Complete mass range scan failed: {e}")
+            return (0.0, 1000.0)
+
+    def get_mass_range_for_resampling(self) -> Tuple[float, float]:
+        """Get accurate mass range required for resampling.
+
+        This performs a complete scan of all spectra to ensure no m/z values
+        are missed when building the resampled axis.
+        """
+        return self._get_mass_range_complete()
 
     def _extract_pixel_size_fast(self) -> Optional[Tuple[float, float]]:
         """Fast pixel size extraction from imzmldict first."""
@@ -231,20 +244,97 @@ class ImzMLMetadataExtractor(MetadataExtractor):
             ]
             for key in instrument_keys:
                 if key in self.parser.imzmldict:
-                    instrument[key.replace(" ", "_")] = self.parser.imzmldict[
-                        key
-                    ]
+                    instrument[key.replace(" ", "_")] = self.parser.imzmldict[key]
 
         return instrument
 
     def _extract_raw_metadata(self) -> Dict[str, Any]:
-        """Extract raw metadata from imzmldict."""
+        """Extract raw metadata from imzmldict and spectrum cvParams."""
         raw_metadata = {}
 
         if hasattr(self.parser, "imzmldict") and self.parser.imzmldict:
             raw_metadata = dict(self.parser.imzmldict)
 
+        # Extract spectrum-level cvParams for centroid detection
+        cv_params = self._extract_spectrum_cvparams()
+        if cv_params:
+            raw_metadata["cvParams"] = cv_params
+
         return raw_metadata
+
+    def _extract_spectrum_cvparams(self) -> Optional[List[Dict[str, Any]]]:
+        """Extract cvParams from first spectrum for centroid detection."""
+        try:
+            if not hasattr(self.parser, "metadata") or not self.parser.metadata:
+                return None
+
+            # Look for spectrum-level cvParams in the metadata
+            if hasattr(self.parser.metadata, "file_description"):
+                file_desc = self.parser.metadata.file_description
+                if hasattr(file_desc, "param_by_name"):
+                    params = file_desc.param_by_name
+                    cv_params = []
+
+                    # Check for centroid spectrum in file description
+                    for name, value in params.items():
+                        cv_params.append({"name": name, "value": value})
+
+                    return cv_params
+
+            return None
+        except Exception as e:
+            logger.debug(f"Could not extract spectrum cvParams: {e}")
+            return None
+
+    def _detect_centroid_spectrum(self) -> Optional[str]:
+        """Detect if this is a centroid spectrum by looking for MS:1000127."""
+        try:
+            # Method 1: Parse XML directly from file for MS:1000127
+            try:
+                try:
+                    # Use defusedxml for secure parsing
+                    import defusedxml.ElementTree as ET
+                except ImportError:
+                    # Fallback to standard library with warning
+                    import xml.etree.ElementTree as ET  # nosec B405
+
+                    logger.warning(
+                        "defusedxml not available, using xml.etree.ElementTree"
+                    )
+
+                tree = ET.parse(self.imzml_path)  # nosec B314
+                root = tree.getroot()
+
+                # Look for cvParam with accession MS:1000127
+                for elem in root.iter():
+                    if elem.tag.endswith("cvParam"):
+                        accession = elem.get("accession", "")
+                        name = elem.get("name", "")
+                        if accession == "MS:1000127" and name == "centroid spectrum":
+                            logger.info(
+                                "Detected centroid spectrum from MS:1000127 cvParam"
+                            )
+                            return "centroid spectrum"
+            except Exception as e:
+                logger.debug(f"XML parsing method failed: {e}")
+
+            # Method 2: Check if parser metadata has processed flag (often correlated with centroid)
+            if hasattr(self.parser, "metadata") and self.parser.metadata:
+                if hasattr(self.parser.metadata, "file_description"):
+                    file_desc = self.parser.metadata.file_description
+                    if hasattr(file_desc, "param_by_name"):
+                        params = file_desc.param_by_name
+                        # If it's processed data, it's likely centroided
+                        if params.get("processed", False):
+                            logger.info(
+                                "Assuming centroid spectrum for processed ImzML data"
+                            )
+                            return "centroid spectrum"
+
+            return None
+        except Exception as e:
+            logger.debug(f"Could not detect centroid spectrum: {e}")
+            return None
 
     def _extract_pixel_size_from_xml(self) -> Optional[Tuple[float, float]]:
         """Extract pixel size using full XML parsing as fallback."""

@@ -8,6 +8,6 @@ from .tic_preserving import TICPreservingStrategy
 
 __all__ = [
     "ResamplingStrategy",
-    "NearestNeighborStrategy", 
+    "NearestNeighborStrategy",
     "TICPreservingStrategy",
 ]

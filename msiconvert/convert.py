@@ -126,6 +126,7 @@ def _create_converter(
     pixel_size_um: float,
     handle_3d: bool,
     pixel_size_detection_info: Dict[str, Any],
+    resampling_config: Optional[Dict[str, Any]] = None,
     **kwargs: Any,
 ) -> Any:
     """Create and return a converter for the specified format."""
@@ -135,17 +136,12 @@ def _create_converter(
     except ValueError as e:
         if "spatialdata" in format_type.lower():
             logging.error(
-                "SpatialData converter is not available due to "
-                "dependency issues."
+                "SpatialData converter is not available due to " "dependency issues."
             )
-            logging.error(
-                "This is commonly caused by zarr version incompatibility."
-            )
+            logging.error("This is commonly caused by zarr version incompatibility.")
             logging.error("Try upgrading your dependencies:")
             logging.error("  pip install --upgrade anndata spatialdata zarr")
-            logging.error(
-                "Or create a fresh environment with compatible versions."
-            )
+            logging.error("Or create a fresh environment with compatible versions.")
             raise ValueError("SpatialData converter unavailable") from e
         else:
             raise e
@@ -156,6 +152,7 @@ def _create_converter(
         pixel_size_um=pixel_size_um,
         handle_3d=handle_3d,
         pixel_size_detection_info=pixel_size_detection_info,
+        resampling_config=resampling_config,
         **kwargs,
     )
 
@@ -165,9 +162,7 @@ def _perform_conversion_with_cleanup(converter: Any, reader: Any) -> bool:
     try:
         logging.info("Starting conversion...")
         result = converter.convert()
-        logging.info(
-            f"Conversion {'completed successfully' if result else 'failed'}"
-        )
+        logging.info(f"Conversion {'completed successfully' if result else 'failed'}")
         return result
     finally:
         if hasattr(reader, "close"):
@@ -181,6 +176,7 @@ def convert_msi(
     dataset_id: str = "msi_dataset",
     pixel_size_um: Optional[float] = None,
     handle_3d: bool = False,
+    resampling_config: Optional[Dict[str, Any]] = None,
     **kwargs: Any,
 ) -> bool:
     """
@@ -224,6 +220,7 @@ def convert_msi(
             final_pixel_size,
             handle_3d,
             pixel_size_detection_info,
+            resampling_config,
             **kwargs,
         )
 
