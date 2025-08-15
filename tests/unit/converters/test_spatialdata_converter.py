@@ -11,13 +11,60 @@ from scipy import sparse
 from msiconvert.converters.spatialdata import SpatialDataConverter
 
 
-def create_mock_reader_with_dimensions(dimensions):
-    """Helper to create mock reader with specific dimensions."""
-    from msiconvert.core.base_reader import BaseMSIReader
+def _create_mock_extractor(dims):
+    """Create mock metadata extractor for test reader."""
     from msiconvert.core.base_extractor import MetadataExtractor
     from msiconvert.metadata.types import ComprehensiveMetadata, EssentialMetadata
+
+    class MockExtractor(MetadataExtractor):
+        def __init__(self, dims):
+            super().__init__(None)
+            self._dims = dims
+
+        def _extract_essential_impl(self):
+            return EssentialMetadata(
+                dimensions=self._dims,
+                coordinate_bounds=(0.0, 2.0, 0.0, 2.0),
+                mass_range=(100.0, 1000.0),
+                pixel_size=None,
+                n_spectra=self._dims[0] * self._dims[1] * self._dims[2],
+                estimated_memory_gb=0.001,
+                source_path="/mock/path",
+            )
+
+        def _extract_comprehensive_impl(self):
+            return ComprehensiveMetadata(
+                essential=self._extract_essential_impl(),
+                format_specific={"format": "mock"},
+                acquisition_params={},
+                instrument_info={"instrument": "test_instrument"},
+                raw_metadata={"source": "mock"},
+            )
+
+    return MockExtractor(dims)
+
+
+def _generate_spectrum_data(dimensions):
+    """Generate spectrum data for mock reader."""
     import numpy as np
+
+    mass_axis = np.linspace(100, 1000, 100)
+    for z in range(dimensions[2]):
+        for y in range(dimensions[1]):
+            for x in range(dimensions[0]):
+                intensities = np.zeros_like(mass_axis)
+                intensities[x * 10 + 20] = 100.0
+                intensities[y * 10 + 50] = 200.0
+                yield ((x, y, z), mass_axis, intensities)
+
+
+def create_mock_reader_with_dimensions(dimensions):
+    """Helper to create mock reader with specific dimensions."""
     from pathlib import Path
+
+    import numpy as np
+
+    from msiconvert.core.base_reader import BaseMSIReader
 
     class MockMSIReader(BaseMSIReader):
         def __init__(self, dims, **kwargs):
@@ -26,45 +73,13 @@ def create_mock_reader_with_dimensions(dimensions):
             self.closed = False
 
         def _create_metadata_extractor(self):
-            class MockExtractor(MetadataExtractor):
-                def __init__(self, dims):
-                    super().__init__(None)
-                    self._dims = dims
-
-                def _extract_essential_impl(self):
-                    return EssentialMetadata(
-                        dimensions=self._dims,
-                        coordinate_bounds=(0.0, 2.0, 0.0, 2.0),
-                        mass_range=(100.0, 1000.0),
-                        pixel_size=None,
-                        n_spectra=self._dims[0] * self._dims[1] * self._dims[2],
-                        estimated_memory_gb=0.001,
-                        source_path="/mock/path",
-                    )
-
-                def _extract_comprehensive_impl(self):
-                    return ComprehensiveMetadata(
-                        essential=self._extract_essential_impl(),
-                        format_specific={"format": "mock"},
-                        acquisition_params={},
-                        instrument_info={"instrument": "test_instrument"},
-                        raw_metadata={"source": "mock"},
-                    )
-
-            return MockExtractor(self._dimensions)
+            return _create_mock_extractor(self._dimensions)
 
         def get_common_mass_axis(self):
             return np.linspace(100, 1000, 100)
 
         def iter_spectra(self, batch_size=None):
-            mass_axis = self.get_common_mass_axis()
-            for z in range(self._dimensions[2]):
-                for y in range(self._dimensions[1]):
-                    for x in range(self._dimensions[0]):
-                        intensities = np.zeros_like(mass_axis)
-                        intensities[x * 10 + 20] = 100.0
-                        intensities[y * 10 + 50] = 200.0
-                        yield ((x, y, z), mass_axis, intensities)
+            return _generate_spectrum_data(self._dimensions)
 
         def close(self):
             self.closed = True
@@ -228,9 +243,7 @@ class TestSpatialDataConverter:
 
     @patch("msiconvert.converters.spatialdata.spatialdata_3d_converter.AnnData")
     @patch("msiconvert.converters.spatialdata.spatialdata_3d_converter.TableModel")
-    def test_finalize_data_3d_volume(
-        self, mock_table_model, mock_anndata, temp_dir
-    ):
+    def test_finalize_data_3d_volume(self, mock_table_model, mock_anndata, temp_dir):
         """Test finalizing data structures for 3D data."""
         output_path = temp_dir / "test_output.zarr"
 
@@ -256,7 +269,7 @@ class TestSpatialDataConverter:
         try:
             # Create mock reader with multiple z-slices
             mock_reader = create_mock_reader_with_dimensions((3, 3, 2))
-            
+
             # Initialize converter
             converter = SpatialDataConverter(mock_reader, output_path, handle_3d=True)
             converter._initialize_conversion()

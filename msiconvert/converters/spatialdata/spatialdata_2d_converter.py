@@ -185,7 +185,9 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
         else:
             # Non-resampled case - need to map to indices
             for i, intensity in enumerate(intensities):
-                if i < len(mz_indices) and mz_indices[i] < len(data_structures["total_intensity"]):
+                if i < len(mz_indices) and mz_indices[i] < len(
+                    data_structures["total_intensity"]
+                ):
                     data_structures["total_intensity"][mz_indices[i]] += intensity
         data_structures["pixel_count"] += 1
 
