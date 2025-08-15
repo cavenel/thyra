@@ -43,11 +43,12 @@ class TestImzMLConversion:
 
             # Check structure
             assert len(sdata.tables) == 1
-            assert "test_dataset" in sdata.tables
+            # Test data is 2x2x1 (single z slice), so expect 2D slice naming convention
+            assert "test_dataset_z0" in sdata.tables
             assert len(sdata.shapes) == 1
 
             # Get the table
-            table = sdata.tables["test_dataset"]
+            table = sdata.tables["test_dataset_z0"]
 
             # Check table structure
             assert table.n_obs == 4  # 2x2 grid = 4 pixels
