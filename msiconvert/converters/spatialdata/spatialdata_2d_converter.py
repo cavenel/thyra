@@ -66,7 +66,7 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
             "pixel_count": 0,
         }
 
-    def _create_sparse_data_for_slice(self, z_value: int) -> sparse.lil_matrix:
+    def _create_sparse_matrix_for_slice(self, z_value: int) -> sparse.lil_matrix:
         """
         Create sparse matrix for a single slice.
 
