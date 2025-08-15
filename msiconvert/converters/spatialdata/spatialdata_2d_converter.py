@@ -47,7 +47,7 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
         for z in range(n_z):
             slice_id = f"{self.dataset_id}_z{z}"
             slices_data[slice_id] = {
-                "sparse_matrix": self._create_sparse_data_for_slice(z),
+                "sparse_data": self._create_sparse_matrix_for_slice(z),
                 "coords_df": self._create_coordinates_dataframe_for_slice(z),
                 "tic_values": np.zeros((n_y, n_x), dtype=np.float64),
             }
@@ -192,7 +192,7 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
 
             # Add to sparse matrix for this slice
             self._add_to_sparse_matrix(
-                slice_data["sparse_matrix"], pixel_idx, mz_indices, intensities
+                slice_data["sparse_data"], pixel_idx, mz_indices, intensities
             )
 
     def _finalize_data(self, data_structures: Dict[str, Any]) -> None:
@@ -220,7 +220,7 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
         for slice_id, slice_data in data_structures["slices_data"].items():
             try:
                 # Convert lil_matrix to csr_matrix for efficient access
-                sparse_matrix = slice_data["sparse_matrix"].tocsr()
+                sparse_matrix = slice_data["sparse_data"].tocsr()
                 logging.info(
                     f"Converted sparse matrix for {slice_id}: "
                     f"{sparse_matrix.nnz:,} non-zero entries"
