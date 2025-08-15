@@ -165,7 +165,15 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         """Extract metadata from reader for resampling decision tree."""
         metadata = {}
 
-        # Try to get essential metadata
+        # Extract different types of metadata
+        self._extract_essential_metadata(metadata)
+        self._extract_comprehensive_metadata(metadata)
+        self._extract_spectrum_metadata(metadata)
+
+        return metadata
+
+    def _extract_essential_metadata(self, metadata: Dict[str, Any]) -> None:
+        """Extract essential metadata for resampling decisions."""
         try:
             essential = self.reader.get_essential_metadata()
             if hasattr(essential, "source_path"):
@@ -180,42 +188,43 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             }
         except Exception as e:
             logging.debug(f"Could not extract essential metadata: {e}")
-            pass
 
-        # Try to get comprehensive metadata
+    def _extract_comprehensive_metadata(self, metadata: Dict[str, Any]) -> None:
+        """Extract comprehensive metadata including Bruker GlobalMetadata."""
         try:
             comp_meta = self.reader.get_comprehensive_metadata()
-
-            # Extract Bruker GlobalMetadata from raw_metadata
-            if (
-                hasattr(comp_meta, "raw_metadata")
-                and "global_metadata" in comp_meta.raw_metadata
-            ):
-                metadata["GlobalMetadata"] = comp_meta.raw_metadata["global_metadata"]
-                logging.debug(
-                    f"Extracted Bruker GlobalMetadata with keys: "
-                    f"{list(metadata['GlobalMetadata'].keys())}"
-                )
-
-            # Also extract instrument_info for fallback
-            if hasattr(comp_meta, "instrument_info"):
-                metadata["instrument_info"] = comp_meta.instrument_info
-                logging.debug(f"Extracted instrument_info: {comp_meta.instrument_info}")
-
+            self._extract_bruker_metadata(metadata, comp_meta)
+            self._extract_instrument_info(metadata, comp_meta)
         except Exception as e:
             logging.debug(f"Could not extract comprehensive metadata: {e}")
 
-        # Try ImzML-specific spectrum metadata
+    def _extract_bruker_metadata(self, metadata: Dict[str, Any], comp_meta) -> None:
+        """Extract Bruker GlobalMetadata from comprehensive metadata."""
+        if (
+            hasattr(comp_meta, "raw_metadata")
+            and "global_metadata" in comp_meta.raw_metadata
+        ):
+            metadata["GlobalMetadata"] = comp_meta.raw_metadata["global_metadata"]
+            logging.debug(
+                f"Extracted Bruker GlobalMetadata with keys: "
+                f"{list(metadata['GlobalMetadata'].keys())}"
+            )
+
+    def _extract_instrument_info(self, metadata: Dict[str, Any], comp_meta) -> None:
+        """Extract instrument_info for fallback detection."""
+        if hasattr(comp_meta, "instrument_info"):
+            metadata["instrument_info"] = comp_meta.instrument_info
+            logging.debug(f"Extracted instrument_info: {comp_meta.instrument_info}")
+
+    def _extract_spectrum_metadata(self, metadata: Dict[str, Any]) -> None:
+        """Extract ImzML-specific spectrum metadata."""
         try:
             if hasattr(self.reader, "get_spectrum_metadata"):
                 spec_meta = self.reader.get_spectrum_metadata()
                 if spec_meta:
                     metadata.update(spec_meta)
-
         except Exception as e:
             logging.debug(f"Could not extract spectrum metadata: {e}")
-
-        return metadata
 
     def _build_resampled_mass_axis(self) -> None:
         """Build resampled mass axis using physics-based generators."""

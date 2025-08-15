@@ -290,51 +290,72 @@ class ImzMLMetadataExtractor(MetadataExtractor):
         """Detect if this is a centroid spectrum by looking for MS:1000127."""
         try:
             # Method 1: Parse XML directly from file for MS:1000127
-            try:
-                try:
-                    # Use defusedxml for secure parsing
-                    import defusedxml.ElementTree as ET
-                except ImportError:
-                    # Fallback to standard library with warning
-                    import xml.etree.ElementTree as ET  # nosec B405
+            result = self._check_xml_for_centroid()
+            if result:
+                return result
 
-                    logger.warning(
-                        "defusedxml not available, using xml.etree.ElementTree"
-                    )
-
-                tree = ET.parse(self.imzml_path)  # nosec B314
-                root = tree.getroot()
-
-                # Look for cvParam with accession MS:1000127
-                for elem in root.iter():
-                    if elem.tag.endswith("cvParam"):
-                        accession = elem.get("accession", "")
-                        name = elem.get("name", "")
-                        if accession == "MS:1000127" and name == "centroid spectrum":
-                            logger.info(
-                                "Detected centroid spectrum from MS:1000127 cvParam"
-                            )
-                            return "centroid spectrum"
-            except Exception as e:
-                logger.debug(f"XML parsing method failed: {e}")
-
-            # Method 2: Check if parser metadata has processed flag (often correlated with centroid)
-            if hasattr(self.parser, "metadata") and self.parser.metadata:
-                if hasattr(self.parser.metadata, "file_description"):
-                    file_desc = self.parser.metadata.file_description
-                    if hasattr(file_desc, "param_by_name"):
-                        params = file_desc.param_by_name
-                        # If it's processed data, it's likely centroided
-                        if params.get("processed", False):
-                            logger.info(
-                                "Assuming centroid spectrum for processed ImzML data"
-                            )
-                            return "centroid spectrum"
+            # Method 2: Check if parser metadata has processed flag
+            result = self._check_parser_metadata_for_centroid()
+            if result:
+                return result
 
             return None
         except Exception as e:
             logger.debug(f"Could not detect centroid spectrum: {e}")
             return None
+
+    def _check_xml_for_centroid(self) -> Optional[str]:
+        """Check XML for MS:1000127 centroid spectrum marker."""
+        try:
+            ET = self._get_xml_parser()
+            tree = ET.parse(self.imzml_path)  # nosec B314
+            root = tree.getroot()
+
+            # Look for cvParam with accession MS:1000127
+            for elem in root.iter():
+                if elem.tag.endswith("cvParam"):
+                    accession = elem.get("accession", "")
+                    name = elem.get("name", "")
+                    if accession == "MS:1000127" and name == "centroid spectrum":
+                        logger.info(
+                            "Detected centroid spectrum from MS:1000127 cvParam"
+                        )
+                        return "centroid spectrum"
+        except Exception as e:
+            logger.debug(f"XML parsing method failed: {e}")
+        return None
+
+    def _get_xml_parser(self):
+        """Get XML parser, preferring defusedxml for security."""
+        try:
+            # Use defusedxml for secure parsing
+            import defusedxml.ElementTree as ET
+            return ET
+        except ImportError:
+            # Fallback to standard library with warning
+            import xml.etree.ElementTree as ET  # nosec B405
+            logger.warning("defusedxml not available, using xml.etree.ElementTree")
+            return ET
+
+    def _check_parser_metadata_for_centroid(self) -> Optional[str]:
+        """Check parser metadata for processed flag indicating centroid data."""
+        if not (hasattr(self.parser, "metadata") and self.parser.metadata):
+            return None
+
+        if not hasattr(self.parser.metadata, "file_description"):
+            return None
+
+        file_desc = self.parser.metadata.file_description
+        if not hasattr(file_desc, "param_by_name"):
+            return None
+
+        params = file_desc.param_by_name
+        # If it's processed data, it's likely centroided
+        if params.get("processed", False):
+            logger.info("Assuming centroid spectrum for processed ImzML data")
+            return "centroid spectrum"
+
+        return None
 
     def _extract_pixel_size_from_xml(self) -> Optional[Tuple[float, float]]:
         """Extract pixel size using full XML parsing as fallback."""
