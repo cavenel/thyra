@@ -33,6 +33,8 @@ except (ImportError, NotImplementedError) as e:
 
     # Create dummy classes for registration
     class AnnData:
+        """Dummy AnnData class for when SpatialData is not available."""
+
         pass
 
     SpatialData = None
@@ -45,7 +47,9 @@ except (ImportError, NotImplementedError) as e:
 
 
 class BaseSpatialDataConverter(BaseMSIConverter, ABC):
-    """Base converter for MSI data to SpatialData format with shared functionality."""
+    """Base converter for MSI data to SpatialData format with shared
+    functionality.
+    """
 
     def __init__(
         self,
@@ -65,20 +69,25 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             output_path: Path for output file
             dataset_id: Identifier for the dataset
             pixel_size_um: Size of each pixel in micrometers
-            handle_3d: Whether to process as 3D data (True) or 2D slices (False)
-            pixel_size_detection_info: Optional metadata about pixel size detection
+            handle_3d: Whether to process as 3D data (True) or 2D slices
+                (False)
+            pixel_size_detection_info: Optional metadata about pixel size
+                detection
             resampling_config: Optional resampling configuration dict
             **kwargs: Additional keyword arguments
 
         Raises:
             ImportError: If SpatialData dependencies are not available
-            ValueError: If pixel_size_um is not positive or dataset_id is empty
+            ValueError: If pixel_size_um is not positive or dataset_id is
+                empty
         """
         # Check if SpatialData is available
         if not SPATIALDATA_AVAILABLE:
             error_msg = (
-                f"SpatialData dependencies not available: {_import_error_msg}. "
-                f"Please install required packages or fix dependency conflicts."
+                f"SpatialData dependencies not available: "
+                f"{_import_error_msg}. "
+                f"Please install required packages or fix dependency "
+                f"conflicts."
             )
             raise ImportError(error_msg)
 
@@ -192,7 +201,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
                     "global_metadata"
                 ]
                 logging.debug(
-                    f"Extracted Bruker GlobalMetadata with keys: {list(metadata['GlobalMetadata'].keys())}"
+                    f"Extracted Bruker GlobalMetadata with keys: "
+                    f"{list(metadata['GlobalMetadata'].keys())}"
                 )
 
             # Also extract instrument_info for fallback
@@ -227,7 +237,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         max_mz = mass_range[1] if self._max_mz is None else self._max_mz
 
         logging.info(
-            f"Building resampled mass axis: {min_mz:.2f} - {max_mz:.2f} m/z, {self._target_bins} bins"
+            f"Building resampled mass axis: {min_mz:.2f} - {max_mz:.2f} m/z, "
+            f"{self._target_bins} bins"
         )
 
         # Get metadata for axis type selection
@@ -251,7 +262,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
                 axis_type=axis_type,
             )
             logging.info(
-                f"Built physics-based {axis_type} mass axis with {len(mass_axis.mz_values)} points"
+                f"Built physics-based {axis_type} mass axis with "
+                f"{len(mass_axis.mz_values)} points"
             )
         else:
             # Fall back to uniform axis
@@ -259,14 +271,17 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
                 min_mz, max_mz, self._target_bins
             )
             logging.info(
-                f"Built uniform mass axis with {len(mass_axis.mz_values)} points"
+                f"Built uniform mass axis with "
+                f"{len(mass_axis.mz_values)} points"
             )
 
         # Override the parent's common mass axis
         self._common_mass_axis = mass_axis.mz_values
 
         logging.info(
-            f"Resampled mass axis: {len(self._common_mass_axis)} bins, range {self._common_mass_axis[0]:.2f} - {self._common_mass_axis[-1]:.2f}"
+            f"Resampled mass axis: {len(self._common_mass_axis)} bins, "
+            f"range {self._common_mass_axis[0]:.2f} - "
+            f"{self._common_mass_axis[-1]:.2f}"
         )
 
     def _initialize_conversion(self) -> None:
@@ -279,7 +294,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             self._dimensions = essential.dimensions
             if any(d <= 0 for d in self._dimensions):
                 raise ValueError(
-                    f"Invalid dimensions: {self._dimensions}. All dimensions must be positive."
+                    f"Invalid dimensions: {self._dimensions}. All dimensions "
+                    f"must be positive."
                 )
 
             # Store essential metadata for use throughout conversion
@@ -294,21 +310,25 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
                     f"Using detected pixel size: {self.pixel_size_um} μm"
                 )
 
-            # IMPORTANT: Don't overwrite _common_mass_axis if resampling is enabled
+            # IMPORTANT: Don't overwrite _common_mass_axis if resampling
+            # is enabled
             if self._resampling_config and self._common_mass_axis is not None:
                 # Already set by _build_resampled_mass_axis() - keep it
                 logging.info(
-                    f"Preserving resampled mass axis with {len(self._common_mass_axis)} bins"
+                    f"Preserving resampled mass axis with "
+                    f"{len(self._common_mass_axis)} bins"
                 )
             else:
                 # No resampling - load raw mass axis as usual
                 self._common_mass_axis = self.reader.get_common_mass_axis()
                 if len(self._common_mass_axis) == 0:
                     raise ValueError(
-                        "Common mass axis is empty. Cannot proceed with conversion."
+                        "Common mass axis is empty. Cannot proceed with "
+                        "conversion."
                     )
                 logging.info(
-                    f"Using raw mass axis with {len(self._common_mass_axis)} unique m/z values"
+                    f"Using raw mass axis with "
+                    f"{len(self._common_mass_axis)} unique m/z values"
                 )
 
             # Only load comprehensive metadata if needed (lazy loading)
@@ -337,7 +357,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         if mzs.size == 0:
             return np.array([], dtype=int)
 
-        # If resampling is enabled, we need to interpolate instead of exact matching
+        # If resampling is enabled, we need to interpolate instead of exact
+        # matching
         if self._resampling_config:
             return self._resample_spectrum_to_indices(mzs)
         else:
@@ -347,9 +368,11 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
     def _resample_spectrum_to_indices(
         self, mzs: NDArray[np.float64]
     ) -> NDArray[np.int_]:
-        """Map spectrum m/z values to resampled mass axis indices using interpolation."""
-        # For resampled data, we want to return ALL indices in the resampled axis
-        # The actual resampling/interpolation will be handled in the processing
+        """Map spectrum m/z values to resampled mass axis indices using
+        interpolation."""
+        # For resampled data, we want to return ALL indices in the resampled
+        # axis. The actual resampling/interpolation will be handled in the
+        # processing
         return np.arange(len(self._common_mass_axis), dtype=np.int_)
 
     def _process_single_spectrum(
@@ -361,7 +384,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
     ) -> None:
         """Override spectrum processing to handle resampling."""
         logging.info(
-            f"Processing spectrum at {coords}: {len(mzs)} peaks, intensity sum: {np.sum(intensities):.2e}"
+            f"Processing spectrum at {coords}: {len(mzs)} peaks, "
+            f"intensity sum: {np.sum(intensities):.2e}"
         )
 
         if self._resampling_config:
@@ -369,7 +393,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             resampled_intensities = self._resample_spectrum(mzs, intensities)
             mz_indices = np.arange(len(self._common_mass_axis), dtype=np.int_)
             logging.info(
-                f"Resampled: {len(resampled_intensities)} values, sum: {np.sum(resampled_intensities):.2e}"
+                f"Resampled: {len(resampled_intensities)} values, "
+                f"sum: {np.sum(resampled_intensities):.2e}"
             )
 
             # Call the specific converter's processing with resampled data
@@ -380,7 +405,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             # Use standard processing for non-resampled data
             mz_indices = self._map_mass_to_indices(mzs)
             logging.info(
-                f"Mapped to {len(mz_indices)} indices, intensity sum: {np.sum(intensities):.2e}"
+                f"Mapped to {len(mz_indices)} indices, "
+                f"intensity sum: {np.sum(intensities):.2e}"
             )
             self._process_resampled_spectrum(
                 data_structures, coords, mz_indices, intensities
@@ -389,7 +415,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
     def _resample_spectrum(
         self, mzs: NDArray[np.float64], intensities: NDArray[np.float64]
     ) -> NDArray[np.float64]:
-        """Resample a single spectrum onto the common mass axis using the selected strategy."""
+        """Resample a single spectrum onto the common mass axis using the
+        selected strategy."""
         if self._common_mass_axis is None:
             raise ValueError("Common mass axis is not initialized")
 
@@ -406,7 +433,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
     def _nearest_neighbor_resample(
         self, mzs: NDArray[np.float64], intensities: NDArray[np.float64]
     ) -> NDArray[np.float64]:
-        """Resample using vectorized nearest neighbor - optimized and clean."""
+        """Resample using vectorized nearest neighbor - optimized and
+        clean."""
         if mzs.size == 0:
             return np.zeros(len(self._common_mass_axis))
 
@@ -470,7 +498,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         mz_indices: NDArray[np.int_],
         intensities: NDArray[np.float64],
     ) -> None:
-        """Process a spectrum with resampled intensities - to be overridden by subclasses."""
+        """Process a spectrum with resampled intensities - to be overridden
+        by subclasses."""
         # This method should be overridden by specific converters (2D/3D)
         pass
 
@@ -493,7 +522,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         n_masses = len(self._common_mass_axis)
 
         logging.info(
-            f"Creating sparse matrix with {n_pixels} pixels and {n_masses} mass values"
+            f"Creating sparse matrix with {n_pixels} pixels and "
+            f"{n_masses} mass values"
         )
         return sparse.lil_matrix((n_pixels, n_masses), dtype=np.float64)
 
@@ -585,7 +615,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         """Add intensity data to sparse matrix efficiently.
 
         Args:
-            sparse_matrix: Target sparse matrix (lil_matrix for efficient construction)
+            sparse_matrix: Target sparse matrix (lil_matrix for efficient
+                construction)
             pixel_idx: Linear pixel index
             mz_indices: Indices for mass values
             intensities: Intensity values to add
@@ -623,7 +654,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         x_coords: NDArray[np.float64] = adata.obs["spatial_x"].values
         y_coords: NDArray[np.float64] = adata.obs["spatial_y"].values
 
-        # Create geometries efficiently - this loop could be optimized but kept for clarity
+        # Create geometries efficiently - this loop could be optimized but
+        # kept for clarity
         half_pixel = self.pixel_size_um / 2
         geometries = []
 
@@ -748,7 +780,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
                 self._pixel_size_detection_info
             )
             logging.info(
-                f"Added pixel size detection info: {self._pixel_size_detection_info}"
+                f"Added pixel size detection info: "
+                f"{self._pixel_size_detection_info}"
             )
 
         # Add conversion metadata

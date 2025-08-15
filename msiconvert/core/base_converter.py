@@ -17,7 +17,8 @@ from .base_reader import BaseMSIReader
 class BaseMSIConverter(ABC):
     """Base class for MSI data converters with shared functionality.
 
-    Implements common processing steps while allowing format-specific customization.
+    Implements common processing steps while allowing format-specific
+    customization.
     """
 
     def __init__(
@@ -30,6 +31,17 @@ class BaseMSIConverter(ABC):
         handle_3d: bool = False,
         **kwargs: Any,
     ):
+        """Initialize the MSI converter.
+
+        Args:
+            reader: MSI data reader instance
+            output_path: Path for output file
+            dataset_id: Identifier for the dataset
+            pixel_size_um: Size of each pixel in micrometers
+            compression_level: Compression level for output
+            handle_3d: Whether to process as 3D data
+            **kwargs: Additional keyword arguments
+        """
         self.reader = reader
         self.output_path = Path(output_path)
         self.dataset_id = dataset_id
@@ -76,7 +88,8 @@ class BaseMSIConverter(ABC):
             self.reader.close()
 
     def _initialize_conversion(self) -> None:
-        """Initialize conversion by loading essential metadata first, then other data."""
+        """Initialize conversion by loading essential metadata first, then
+        other data."""
         logging.info("Loading essential dataset information...")
         try:
             # Load essential metadata first (fast, single query for Bruker)
@@ -85,7 +98,8 @@ class BaseMSIConverter(ABC):
             self._dimensions = essential.dimensions
             if any(d <= 0 for d in self._dimensions):
                 raise ValueError(
-                    f"Invalid dimensions: {self._dimensions}. All dimensions must be positive."
+                    f"Invalid dimensions: {self._dimensions}. All dimensions "
+                    f"must be positive."
                 )
 
             # Store essential metadata for use throughout conversion
@@ -104,7 +118,8 @@ class BaseMSIConverter(ABC):
             self._common_mass_axis = self.reader.get_common_mass_axis()
             if len(self._common_mass_axis) == 0:
                 raise ValueError(
-                    "Common mass axis is empty. Cannot proceed with conversion."
+                    "Common mass axis is empty. Cannot proceed with "
+                    "conversion."
                 )
 
             # Only load comprehensive metadata if needed (lazy loading)
@@ -134,11 +149,13 @@ class BaseMSIConverter(ABC):
         pass
 
     def _process_spectra(self, data_structures: Any) -> None:
-        """Process all spectra from the reader and integrate into data structures.
+        """Process all spectra from the reader and integrate into data
+        structures.
 
         Parameters:
         -----------
-        data_structures: Format-specific data containers created by _create_data_structures.
+        data_structures: Format-specific data containers created by
+            _create_data_structures.
         """
         if self._dimensions is None:
             raise ValueError("Dimensions are not initialized.")
@@ -191,14 +208,15 @@ class BaseMSIConverter(ABC):
                 self._dimensions[0] * self._dimensions[1] * self._dimensions[2]
             )
             logging.warning(
-                f"Could not determine exact spectra count, estimating {total_pixels} "
-                f"from dimensions"
+                f"Could not determine exact spectra count, estimating "
+                f"{total_pixels} from dimensions"
             )
             return total_pixels
 
         # Should not reach here if initialization was successful
         raise ValueError(
-            "Cannot determine spectra count - conversion not properly initialized"
+            "Cannot determine spectra count - conversion not properly "
+            "initialized"
         )
 
     def _process_single_spectrum(
@@ -309,7 +327,8 @@ class BaseMSIConverter(ABC):
             },
         }
 
-        # Subclasses should override to add this structured metadata to their outputs
+        # Subclasses should override to add this structured metadata to
+        # their outputs
         logging.info(
             f"Base metadata structure prepared for {self.__class__.__name__}"
         )
@@ -335,7 +354,8 @@ class BaseMSIConverter(ABC):
         n_masses = len(self._common_mass_axis)
 
         logging.info(
-            f"Creating sparse matrix for {n_pixels} pixels and {n_masses} mass values"
+            f"Creating sparse matrix for {n_pixels} pixels and "
+            f"{n_masses} mass values"
         )
 
         return sparse.lil_matrix((n_pixels, n_masses), dtype=np.float64)
@@ -412,7 +432,8 @@ class BaseMSIConverter(ABC):
     def _map_mass_to_indices(
         self, mzs: NDArray[np.float64]
     ) -> NDArray[np.int_]:
-        """Map m/z values to indices in the common mass axis with high accuracy.
+        """Map m/z values to indices in the common mass axis with high
+        accuracy.
 
         Parameters:
         -----------
@@ -435,7 +456,8 @@ class BaseMSIConverter(ABC):
         indices = np.clip(indices, 0, len(self._common_mass_axis) - 1)
 
         # For complete accuracy, validate the indices
-        max_diff = 1e-6  # Very small tolerance threshold for floating point differences
+        # Very small tolerance threshold for floating point differences
+        max_diff = 1e-6
         mask = np.abs(self._common_mass_axis[indices] - mzs) <= max_diff
 
         return indices[mask]
@@ -461,7 +483,8 @@ class BaseMSIConverter(ABC):
 
         if mz_indices.size == 0 or intensities.size == 0:
             logging.debug(
-                f"Empty data for pixel {pixel_idx}: {mz_indices.size} indices, "
+                f"Empty data for pixel {pixel_idx}: {mz_indices.size} "
+                f"indices, "
                 f"{intensities.size} intensities"
             )
             return
@@ -472,13 +495,16 @@ class BaseMSIConverter(ABC):
         valid_mask = (mz_indices < n_masses) & (intensities > 0)
 
         logging.info(
-            f"Pixel {pixel_idx}: {len(mz_indices)} input indices, {np.sum(valid_mask)} valid after filtering"
+            f"Pixel {pixel_idx}: {len(mz_indices)} input indices, "
+            f"{np.sum(valid_mask)} valid after filtering"
         )
         logging.info(
-            f"  Index bounds check: {np.sum(mz_indices < n_masses)}/{len(mz_indices)}"
+            f"  Index bounds check: "
+            f"{np.sum(mz_indices < n_masses)}/{len(mz_indices)}"
         )
         logging.info(
-            f"  Intensity > 0 check: {np.sum(intensities > 0)}/{len(intensities)}"
+            f"  Intensity > 0 check: "
+            f"{np.sum(intensities > 0)}/{len(intensities)}"
         )
 
         if not np.any(valid_mask):
@@ -490,7 +516,8 @@ class BaseMSIConverter(ABC):
         valid_intensities = intensities[valid_mask]
 
         logging.info(
-            f"Storing {len(valid_indices)} values for pixel {pixel_idx}, intensity sum: {np.sum(valid_intensities):.2e}"
+            f"Storing {len(valid_indices)} values for pixel {pixel_idx}, "
+            f"intensity sum: {np.sum(valid_intensities):.2e}"
         )
 
         # Use bulk assignment for better performance
