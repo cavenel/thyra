@@ -131,5 +131,4 @@ def get_metadata_summary(extractor) -> dict:
         "source_path": essential.source_path,
         "is_3d": essential.is_3d,
         "has_pixel_size": essential.has_pixel_size,
-        "spatial_extent": essential.spatial_extent,
     }

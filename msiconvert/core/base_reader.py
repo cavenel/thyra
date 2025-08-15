@@ -121,6 +121,11 @@ class BaseMSIReader(ABC):
         """Context manager entry."""
         return self
 
-    def __exit__(self, exc_type: Optional[type], exc_val: Optional[Exception], exc_tb: Optional[object]) -> None:
+    def __exit__(
+        self,
+        exc_type: Optional[type],
+        exc_val: Optional[Exception],
+        exc_tb: Optional[object],
+    ) -> None:
         """Context manager exit with cleanup."""
         self.close()

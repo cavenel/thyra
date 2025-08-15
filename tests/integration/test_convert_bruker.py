@@ -53,9 +53,7 @@ class TestBrukerConversion:
         assert detected_format == "bruker"
 
     @pytest.mark.skipif(
-        not pytest.importorskip(
-            "spatialdata", reason="SpatialData not installed"
-        ),
+        not pytest.importorskip("spatialdata", reason="SpatialData not installed"),
         reason="SpatialData not installed",
     )
     @(
@@ -120,9 +118,7 @@ class TestBrukerConversion:
         mock_cursor.execute.side_effect = execute_side_effect
 
         # Patch both the BrukerReader initialization and the iter_spectra method
-        with patch(
-            "msiconvert.readers.bruker_reader.BrukerReader._preload_metadata"
-        ):
+        with patch("msiconvert.readers.bruker_reader.BrukerReader._preload_metadata"):
             # Create a mock for the BrukerReader class that will be instantiated
             mock_reader = MagicMock()
             mock_reader.get_common_mass_axis.return_value = np.array(
@@ -197,9 +193,7 @@ class TestBrukerConversion:
     ):
         """Test that BrukerReader raises RuntimeError if DLL is not found."""
         reader = BrukerReader(mock_bruker_data_dir)
-        with pytest.raises(
-            RuntimeError, match="Bruker DLL/shared library not found"
-        ):
+        with pytest.raises(RuntimeError, match="Bruker DLL/shared library not found"):
             reader._load_dll()
 
     def test_spatialdata_integration(self):

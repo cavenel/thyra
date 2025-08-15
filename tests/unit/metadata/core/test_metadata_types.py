@@ -41,22 +41,6 @@ class TestEssentialMetadata:
 
         assert metadata.pixel_size is None
 
-    def test_spatial_extent_property(self):
-        """Test spatial extent calculation."""
-        metadata = EssentialMetadata(
-            dimensions=(10, 20, 1),
-            coordinate_bounds=(10.0, 110.0, 5.0, 205.0),
-            mass_range=(100.0, 1000.0),
-            pixel_size=(25.0, 25.0),
-            n_spectra=200,
-            estimated_memory_gb=1.5,
-            source_path="/path/to/data.imzML",
-        )
-
-        x_extent, y_extent = metadata.spatial_extent
-        assert x_extent == 100.0  # 110.0 - 10.0
-        assert y_extent == 200.0  # 205.0 - 5.0
-
     def test_has_pixel_size_property(self):
         """Test has_pixel_size property."""
         # With pixel size

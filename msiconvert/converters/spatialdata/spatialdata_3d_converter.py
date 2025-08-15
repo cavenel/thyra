@@ -6,10 +6,7 @@ from typing import Any, Dict, Tuple
 import numpy as np
 from numpy.typing import NDArray
 
-from .base_spatialdata_converter import (
-    SPATIALDATA_AVAILABLE,
-    BaseSpatialDataConverter,
-)
+from .base_spatialdata_converter import SPATIALDATA_AVAILABLE, BaseSpatialDataConverter
 
 if SPATIALDATA_AVAILABLE:
     import xarray as xr
@@ -47,16 +44,14 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
 
         return {
             "mode": "3d_volume",
-            "sparse_data": self._create_sparse_matrix(),
+            "sparse_matrix": self._create_sparse_matrix(),
             "coords_df": self._create_coordinates_dataframe(),
             "var_df": self._create_mass_dataframe(),
             "tables": tables,
             "shapes": shapes,
             "images": images,
             "tic_values": np.zeros((n_y, n_x, n_z), dtype=np.float64),
-            "total_intensity": np.zeros(
-                len(self._common_mass_axis), dtype=np.float64
-            ),
+            "total_intensity": np.zeros(len(self._common_mass_axis), dtype=np.float64),
             "pixel_count": 0,
         }
 
@@ -69,12 +64,32 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
     ) -> None:
         """
         Process a single spectrum for 3D volume format.
+        Delegates to parent's resampling-aware processing.
 
         Args:
             data_structures: Data structures for storing processed data
             coords: (x, y, z) pixel coordinates
             mzs: Array of m/z values
             intensities: Array of intensity values
+        """
+        # Delegate to parent's resampling-aware processing
+        super()._process_single_spectrum(data_structures, coords, mzs, intensities)
+
+    def _process_resampled_spectrum(
+        self,
+        data_structures: Dict[str, Any],
+        coords: Tuple[int, int, int],
+        mz_indices: NDArray[np.int_],
+        intensities: NDArray[np.float64],
+    ) -> None:
+        """
+        Process a spectrum with resampled intensities for 3D volume format.
+
+        Args:
+            data_structures: Data structures for storing processed data
+            coords: (x, y, z) pixel coordinates
+            mz_indices: Indices in the common mass axis (all indices for resampled)
+            intensities: Resampled intensity values
         """
         if self._dimensions is None:
             raise ValueError("Dimensions are not initialized")
@@ -85,8 +100,17 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
         tic_value = float(np.sum(intensities))
 
         # Update total intensity for average spectrum calculation
-        mz_indices = self._map_mass_to_indices(mzs)
-        data_structures["total_intensity"][mz_indices] += intensities
+        # Handle both resampled and non-resampled cases
+        if len(intensities) == len(data_structures["total_intensity"]):
+            # Resampled case - intensities match common mass axis length
+            data_structures["total_intensity"] += intensities
+        else:
+            # Non-resampled case - need to map to indices
+            for i, intensity in enumerate(intensities):
+                if i < len(mz_indices) and mz_indices[i] < len(
+                    data_structures["total_intensity"]
+                ):
+                    data_structures["total_intensity"][mz_indices[i]] += intensity
         data_structures["pixel_count"] += 1
 
         # Get pixel index for 3D volume
@@ -97,8 +121,10 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
 
         # Add to sparse matrix
         self._add_to_sparse_matrix(
-            data_structures["sparse_data"], pixel_idx, mz_indices, intensities
+            data_structures["sparse_matrix"], pixel_idx, mz_indices, intensities
         )
+
+        self._non_empty_pixel_count += 1
 
     def _finalize_data(self, data_structures: Dict[str, Any]) -> None:
         """
@@ -114,14 +140,15 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
             # Store pixel count for metadata
             self._non_empty_pixel_count = data_structures["pixel_count"]
 
-            # Convert to CSR format for efficiency
-            data_structures["sparse_data"] = data_structures[
-                "sparse_data"
-            ].tocsr()
+            # Convert lil_matrix to csr_matrix for efficient access
+            sparse_matrix = data_structures["sparse_matrix"].tocsr()
+            logging.info(
+                f"Converted sparse matrix: {sparse_matrix.nnz:,} non-zero entries"
+            )
 
             # Create AnnData
             adata = AnnData(
-                X=data_structures["sparse_data"],
+                X=sparse_matrix,
                 obs=data_structures["coords_df"],
                 var=data_structures["var_df"],
             )
@@ -179,9 +206,7 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
             z_size, y_size, x_size = tic_values.shape
 
             # Add channel dimension for 3D image
-            tic_values_with_channel = tic_values.reshape(
-                1, z_size, y_size, x_size
-            )
+            tic_values_with_channel = tic_values.reshape(1, z_size, y_size, x_size)
 
             tic_image = xr.DataArray(
                 tic_values_with_channel,
@@ -210,19 +235,15 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
                 )
             except (ImportError, AttributeError):
                 # Fallback if Image3DModel is not available
-                logging.warning(
-                    "Image3DModel not available, using generic image model"
-                )
+                logging.warning("Image3DModel not available, using generic image model")
                 from spatialdata.models import ImageModel
 
-                data_structures["images"][f"{self.dataset_id}_tic"] = (
-                    ImageModel.parse(
-                        tic_image,
-                        transformations={
-                            self.dataset_id: transform,
-                            "global": transform,
-                        },
-                    )
+                data_structures["images"][f"{self.dataset_id}_tic"] = ImageModel.parse(
+                    tic_image,
+                    transformations={
+                        self.dataset_id: transform,
+                        "global": transform,
+                    },
                 )
         else:
             # Single 2D slice
@@ -249,12 +270,10 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
 
             # Create Image2DModel for the TIC image
             transform = Identity()
-            data_structures["images"][f"{self.dataset_id}_tic"] = (
-                Image2DModel.parse(
-                    tic_image,
-                    transformations={
-                        self.dataset_id: transform,
-                        "global": transform,
-                    },
-                )
+            data_structures["images"][f"{self.dataset_id}_tic"] = Image2DModel.parse(
+                tic_image,
+                transformations={
+                    self.dataset_id: transform,
+                    "global": transform,
+                },
             )

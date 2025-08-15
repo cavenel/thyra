@@ -11,9 +11,7 @@ class TestImzMLConversion:
     """Test the end-to-end conversion of imzML files."""
 
     @pytest.mark.skipif(
-        not pytest.importorskip(
-            "spatialdata", reason="SpatialData not installed"
-        ),
+        not pytest.importorskip("spatialdata", reason="SpatialData not installed"),
         reason="SpatialData not installed",
     )
     def test_convert_to_spatialdata(self, create_minimal_imzml, temp_dir):
@@ -45,17 +43,16 @@ class TestImzMLConversion:
 
             # Check structure
             assert len(sdata.tables) == 1
-            assert "test_dataset" in sdata.tables
+            # Test data is 2x2x1 (single z slice), so expect 2D slice naming convention
+            assert "test_dataset_z0" in sdata.tables
             assert len(sdata.shapes) == 1
 
             # Get the table
-            table = sdata.tables["test_dataset"]
+            table = sdata.tables["test_dataset_z0"]
 
             # Check table structure
             assert table.n_obs == 4  # 2x2 grid = 4 pixels
-            assert table.n_vars == len(
-                mzs
-            )  # Should match number of m/z values
+            assert table.n_vars == len(mzs)  # Should match number of m/z values
             assert "average_spectrum" in table.uns
 
             # Check spatial coordinates are now in the obs dataframe
@@ -80,9 +77,7 @@ class TestImzMLConversion:
         assert result is False
         assert not output_path.exists()
 
-    def test_conversion_with_existing_output(
-        self, create_minimal_imzml, temp_dir
-    ):
+    def test_conversion_with_existing_output(self, create_minimal_imzml, temp_dir):
         """Test error handling when output file already exists."""
         # Get test data
         imzml_path, _, _, _ = create_minimal_imzml

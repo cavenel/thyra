@@ -62,9 +62,7 @@ class TestBrukerReaderStructure:
     and not Path("/usr/lib/libtimsdata.so").exists(),
     reason="Bruker DLL/shared library not available",
 )
-@pytest.mark.skip(
-    "BrukerReader architecture changed - tests need complete rewrite"
-)
+@pytest.mark.skip("BrukerReader architecture changed - tests need complete rewrite")
 class TestBrukerReaderWithMocks:
     """Test Bruker reader functionality using mocks."""
 
@@ -261,9 +259,7 @@ class TestBrukerReaderWithMocks:
             }
 
             # Also set frame positions for backward compatibility
-            reader._frame_positions = np.array(
-                [[0, 0], [0, 1], [1, 0], [1, 1]]
-            )
+            reader._frame_positions = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
 
             # Need to mock the metadata extractor query
             def execute_side_effect_with_metadata(query, *args, **kwargs):

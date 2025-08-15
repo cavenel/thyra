@@ -43,9 +43,7 @@ MASS_AXIS_BATCH_SIZE = 50  # Batch size for mass axis construction
 MAX_BUFFERS_PER_SIZE = 10  # Maximum number of buffers to keep per size
 
 # Pixel size detection
-PIXEL_SIZE_TOLERANCE = (
-    0.01  # Tolerance for pixel size comparison (micrometers)
-)
+PIXEL_SIZE_TOLERANCE = 0.01  # Tolerance for pixel size comparison (micrometers)
 
 # File size estimation (rough)
 ESTIMATED_BYTES_PER_SPECTRUM_POINT = 4  # For float32 values

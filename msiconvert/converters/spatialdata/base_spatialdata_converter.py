@@ -12,6 +12,7 @@ from scipy import sparse
 
 from ...core.base_converter import BaseMSIConverter
 from ...core.base_reader import BaseMSIReader
+from ...resampling import ResamplingDecisionTree, ResamplingMethod
 
 # Check SpatialData availability (defer imports to avoid issues)
 SPATIALDATA_AVAILABLE = False
@@ -32,6 +33,8 @@ except (ImportError, NotImplementedError) as e:
 
     # Create dummy classes for registration
     class AnnData:
+        """Dummy AnnData class for when SpatialData is not available."""
+
         pass
 
     SpatialData = None
@@ -44,7 +47,9 @@ except (ImportError, NotImplementedError) as e:
 
 
 class BaseSpatialDataConverter(BaseMSIConverter, ABC):
-    """Base converter for MSI data to SpatialData format with shared functionality."""
+    """Base converter for MSI data to SpatialData format with shared
+    functionality.
+    """
 
     def __init__(
         self,
@@ -54,6 +59,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         pixel_size_um: float = 1.0,
         handle_3d: bool = False,
         pixel_size_detection_info: Optional[Dict[str, Any]] = None,
+        resampling_config: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ) -> None:
         """Initialize the base SpatialData converter.
@@ -63,19 +69,25 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             output_path: Path for output file
             dataset_id: Identifier for the dataset
             pixel_size_um: Size of each pixel in micrometers
-            handle_3d: Whether to process as 3D data (True) or 2D slices (False)
-            pixel_size_detection_info: Optional metadata about pixel size detection
+            handle_3d: Whether to process as 3D data (True) or 2D slices
+                (False)
+            pixel_size_detection_info: Optional metadata about pixel size
+                detection
+            resampling_config: Optional resampling configuration dict
             **kwargs: Additional keyword arguments
 
         Raises:
             ImportError: If SpatialData dependencies are not available
-            ValueError: If pixel_size_um is not positive or dataset_id is empty
+            ValueError: If pixel_size_um is not positive or dataset_id is
+                empty
         """
         # Check if SpatialData is available
         if not SPATIALDATA_AVAILABLE:
             error_msg = (
-                f"SpatialData dependencies not available: {_import_error_msg}. "
-                f"Please install required packages or fix dependency conflicts."
+                f"SpatialData dependencies not available: "
+                f"{_import_error_msg}. "
+                f"Please install required packages or fix dependency "
+                f"conflicts."
             )
             raise ImportError(error_msg)
 
@@ -104,6 +116,377 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
 
         self._non_empty_pixel_count: int = 0
         self._pixel_size_detection_info = pixel_size_detection_info
+        self._resampling_config = resampling_config
+
+        # Set up resampling if enabled
+        if self._resampling_config:
+            self._setup_resampling()
+            # Override the common mass axis with resampled axis
+            self._build_resampled_mass_axis()
+
+    def _setup_resampling(self) -> None:
+        """Set up resampling configuration and strategy."""
+        if not self._resampling_config:
+            return
+
+        method = self._resampling_config.get("method", "auto")
+
+        # If method is "auto", use DecisionTree to determine strategy
+        if method == "auto":
+            try:
+                # Get metadata from reader for instrument detection
+                metadata = self._get_reader_metadata_for_resampling()
+                tree = ResamplingDecisionTree()
+                detected_method = tree.select_strategy(metadata)
+                logging.info(f"Auto-detected resampling method: {detected_method}")
+                self._resampling_method = detected_method
+            except NotImplementedError as e:
+                logging.error(f"Auto-detection failed: {e}")
+                logging.info("Falling back to nearest_neighbor for resampling")
+                self._resampling_method = ResamplingMethod.NEAREST_NEIGHBOR
+        else:
+            # Convert string to enum
+            method_map = {
+                "nearest_neighbor": ResamplingMethod.NEAREST_NEIGHBOR,
+                "tic_preserving": ResamplingMethod.TIC_PRESERVING,
+            }
+            self._resampling_method = method_map.get(
+                method, ResamplingMethod.NEAREST_NEIGHBOR
+            )
+
+        logging.info(f"Using resampling method: {self._resampling_method}")
+
+        # Store resampling parameters
+        self._target_bins = self._resampling_config.get("target_bins", 5000)
+        self._min_mz = self._resampling_config.get("min_mz")
+        self._max_mz = self._resampling_config.get("max_mz")
+
+    def _get_reader_metadata_for_resampling(self) -> Dict[str, Any]:
+        """Extract metadata from reader for resampling decision tree."""
+        metadata = {}
+
+        # Extract different types of metadata
+        self._extract_essential_metadata(metadata)
+        self._extract_comprehensive_metadata(metadata)
+        self._extract_spectrum_metadata(metadata)
+
+        return metadata
+
+    def _extract_essential_metadata(self, metadata: Dict[str, Any]) -> None:
+        """Extract essential metadata for resampling decisions."""
+        try:
+            essential = self.reader.get_essential_metadata()
+            if hasattr(essential, "source_path"):
+                metadata["source_path"] = str(essential.source_path)
+
+            # Add essential metadata for resampling decisions
+            metadata["essential_metadata"] = {
+                "spectrum_type": getattr(essential, "spectrum_type", None),
+                "dimensions": essential.dimensions,
+                "mass_range": essential.mass_range,
+                "source_path": str(essential.source_path),
+            }
+        except Exception as e:
+            logging.debug(f"Could not extract essential metadata: {e}")
+
+    def _extract_comprehensive_metadata(self, metadata: Dict[str, Any]) -> None:
+        """Extract comprehensive metadata including Bruker GlobalMetadata."""
+        try:
+            comp_meta = self.reader.get_comprehensive_metadata()
+            self._extract_bruker_metadata(metadata, comp_meta)
+            self._extract_instrument_info(metadata, comp_meta)
+        except Exception as e:
+            logging.debug(f"Could not extract comprehensive metadata: {e}")
+
+    def _extract_bruker_metadata(self, metadata: Dict[str, Any], comp_meta) -> None:
+        """Extract Bruker GlobalMetadata from comprehensive metadata."""
+        if (
+            hasattr(comp_meta, "raw_metadata")
+            and "global_metadata" in comp_meta.raw_metadata
+        ):
+            metadata["GlobalMetadata"] = comp_meta.raw_metadata["global_metadata"]
+            logging.debug(
+                f"Extracted Bruker GlobalMetadata with keys: "
+                f"{list(metadata['GlobalMetadata'].keys())}"
+            )
+
+    def _extract_instrument_info(self, metadata: Dict[str, Any], comp_meta) -> None:
+        """Extract instrument_info for fallback detection."""
+        if hasattr(comp_meta, "instrument_info"):
+            metadata["instrument_info"] = comp_meta.instrument_info
+            logging.debug(f"Extracted instrument_info: {comp_meta.instrument_info}")
+
+    def _extract_spectrum_metadata(self, metadata: Dict[str, Any]) -> None:
+        """Extract ImzML-specific spectrum metadata."""
+        try:
+            if hasattr(self.reader, "get_spectrum_metadata"):
+                spec_meta = self.reader.get_spectrum_metadata()
+                if spec_meta:
+                    metadata.update(spec_meta)
+        except Exception as e:
+            logging.debug(f"Could not extract spectrum metadata: {e}")
+
+    def _build_resampled_mass_axis(self) -> None:
+        """Build resampled mass axis using physics-based generators."""
+        from ...resampling.common_axis import CommonAxisBuilder
+
+        # Get the original mass range from the raw data
+        mass_range = self.reader.mass_range
+        min_mz = mass_range[0] if self._min_mz is None else self._min_mz
+        max_mz = mass_range[1] if self._max_mz is None else self._max_mz
+
+        logging.info(
+            f"Building resampled mass axis: {min_mz:.2f} - {max_mz:.2f} m/z, "
+            f"{self._target_bins} bins"
+        )
+
+        # Get metadata for axis type selection
+        metadata = self._get_reader_metadata_for_resampling()
+
+        # Select axis type using DecisionTree
+        tree = ResamplingDecisionTree()
+        axis_type = tree.select_axis_type(metadata)
+
+        logging.info(f"Selected axis type: {axis_type}")
+
+        # Build the physics-based axis
+        builder = CommonAxisBuilder()
+
+        if hasattr(axis_type, "value") and axis_type.value != "constant":
+            # Use physics-based generator
+            mass_axis = builder.build_physics_axis(
+                min_mz=min_mz,
+                max_mz=max_mz,
+                num_bins=self._target_bins,
+                axis_type=axis_type,
+            )
+            logging.info(
+                f"Built physics-based {axis_type} mass axis with "
+                f"{len(mass_axis.mz_values)} points"
+            )
+        else:
+            # Fall back to uniform axis
+            mass_axis = builder.build_uniform_axis(min_mz, max_mz, self._target_bins)
+            logging.info(
+                f"Built uniform mass axis with " f"{len(mass_axis.mz_values)} points"
+            )
+
+        # Override the parent's common mass axis
+        self._common_mass_axis = mass_axis.mz_values
+
+        logging.info(
+            f"Resampled mass axis: {len(self._common_mass_axis)} bins, "
+            f"range {self._common_mass_axis[0]:.2f} - "
+            f"{self._common_mass_axis[-1]:.2f}"
+        )
+
+    def _initialize_conversion(self) -> None:
+        """Override parent initialization to preserve resampled mass axis."""
+        logging.info("Loading essential dataset information...")
+        try:
+            # Load essential metadata first (fast, single query for Bruker)
+            essential = self.reader.get_essential_metadata()
+
+            self._dimensions = essential.dimensions
+            if any(d <= 0 for d in self._dimensions):
+                raise ValueError(
+                    f"Invalid dimensions: {self._dimensions}. All dimensions "
+                    f"must be positive."
+                )
+
+            # Store essential metadata for use throughout conversion
+            self._coordinate_bounds = essential.coordinate_bounds
+            self._n_spectra = essential.n_spectra
+            self._estimated_memory_gb = essential.estimated_memory_gb
+
+            # Override pixel size if not provided and available in metadata
+            if self.pixel_size_um == 1.0 and essential.pixel_size:
+                self.pixel_size_um = essential.pixel_size[0]
+                logging.info(f"Using detected pixel size: {self.pixel_size_um} μm")
+
+            # IMPORTANT: Don't overwrite _common_mass_axis if resampling
+            # is enabled
+            if self._resampling_config and self._common_mass_axis is not None:
+                # Already set by _build_resampled_mass_axis() - keep it
+                logging.info(
+                    f"Preserving resampled mass axis with "
+                    f"{len(self._common_mass_axis)} bins"
+                )
+            else:
+                # No resampling - load raw mass axis as usual
+                self._common_mass_axis = self.reader.get_common_mass_axis()
+                if len(self._common_mass_axis) == 0:
+                    raise ValueError(
+                        "Common mass axis is empty. Cannot proceed with " "conversion."
+                    )
+                logging.info(
+                    f"Using raw mass axis with "
+                    f"{len(self._common_mass_axis)} unique m/z values"
+                )
+
+            # Only load comprehensive metadata if needed (lazy loading)
+            self._metadata = None  # Will be loaded on demand
+
+            logging.info(f"Dataset dimensions: {self._dimensions}")
+            logging.info(f"Coordinate bounds: {self._coordinate_bounds}")
+            logging.info(f"Total spectra: {self._n_spectra}")
+            logging.info(f"Estimated memory: {self._estimated_memory_gb:.2f} GB")
+            logging.info(f"Common mass axis length: {len(self._common_mass_axis)}")
+        except Exception as e:
+            logging.error(f"Error during initialization: {e}")
+            raise
+
+    def _map_mass_to_indices(self, mzs: NDArray[np.float64]) -> NDArray[np.int_]:
+        """Override mass mapping to handle resampling with interpolation."""
+        if self._common_mass_axis is None:
+            raise ValueError("Common mass axis is not initialized.")
+
+        if mzs.size == 0:
+            return np.array([], dtype=int)
+
+        # If resampling is enabled, we need to interpolate instead of exact
+        # matching
+        if self._resampling_config:
+            return self._resample_spectrum_to_indices(mzs)
+        else:
+            # Use parent's exact matching for non-resampled data
+            return super()._map_mass_to_indices(mzs)
+
+    def _resample_spectrum_to_indices(
+        self, mzs: NDArray[np.float64]
+    ) -> NDArray[np.int_]:
+        """Map spectrum m/z values to resampled mass axis indices using
+        interpolation."""
+        # For resampled data, we want to return ALL indices in the resampled
+        # axis. The actual resampling/interpolation will be handled in the
+        # processing
+        return np.arange(len(self._common_mass_axis), dtype=np.int_)
+
+    def _process_single_spectrum(
+        self,
+        data_structures: Any,
+        coords: Tuple[int, int, int],
+        mzs: NDArray[np.float64],
+        intensities: NDArray[np.float64],
+    ) -> None:
+        """Override spectrum processing to handle resampling."""
+        logging.info(
+            f"Processing spectrum at {coords}: {len(mzs)} peaks, "
+            f"intensity sum: {np.sum(intensities):.2e}"
+        )
+
+        if self._resampling_config:
+            # Resample the spectrum onto the common mass axis
+            resampled_intensities = self._resample_spectrum(mzs, intensities)
+            mz_indices = np.arange(len(self._common_mass_axis), dtype=np.int_)
+            logging.info(
+                f"Resampled: {len(resampled_intensities)} values, "
+                f"sum: {np.sum(resampled_intensities):.2e}"
+            )
+
+            # Call the specific converter's processing with resampled data
+            self._process_resampled_spectrum(
+                data_structures, coords, mz_indices, resampled_intensities
+            )
+        else:
+            # Use standard processing for non-resampled data
+            mz_indices = self._map_mass_to_indices(mzs)
+            logging.info(
+                f"Mapped to {len(mz_indices)} indices, "
+                f"intensity sum: {np.sum(intensities):.2e}"
+            )
+            self._process_resampled_spectrum(
+                data_structures, coords, mz_indices, intensities
+            )
+
+    def _resample_spectrum(
+        self, mzs: NDArray[np.float64], intensities: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
+        """Resample a single spectrum onto the common mass axis using the
+        selected strategy."""
+        if self._common_mass_axis is None:
+            raise ValueError("Common mass axis is not initialized")
+
+        # Use the selected resampling method
+        if hasattr(self, "_resampling_method"):
+            if self._resampling_method == ResamplingMethod.NEAREST_NEIGHBOR:
+                return self._nearest_neighbor_resample(mzs, intensities)
+            elif self._resampling_method == ResamplingMethod.TIC_PRESERVING:
+                return self._tic_preserving_resample(mzs, intensities)
+
+        # Fallback to nearest neighbor
+        return self._nearest_neighbor_resample(mzs, intensities)
+
+    def _nearest_neighbor_resample(
+        self, mzs: NDArray[np.float64], intensities: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
+        """Resample using vectorized nearest neighbor - optimized and
+        clean."""
+        if mzs.size == 0:
+            return np.zeros(len(self._common_mass_axis))
+
+        # Find insertion points using vectorized binary search
+        indices = np.searchsorted(self._common_mass_axis, mzs)
+
+        # Handle edge cases and find actual nearest neighbors
+        indices = np.clip(indices, 0, len(self._common_mass_axis) - 1)
+
+        # Check if left neighbor is closer (when not at boundary)
+        mask = indices > 0
+        left_indices = indices - 1
+        left_dist = np.abs(self._common_mass_axis[left_indices[mask]] - mzs[mask])
+        right_dist = np.abs(self._common_mass_axis[indices[mask]] - mzs[mask])
+        indices[mask] = np.where(
+            left_dist <= right_dist, left_indices[mask], indices[mask]
+        )
+
+        # Accumulate intensities using bincount (fastest accumulation)
+        resampled = np.bincount(
+            indices, weights=intensities, minlength=len(self._common_mass_axis)
+        )
+
+        return resampled
+
+    def _tic_preserving_resample(
+        self, mzs: NDArray[np.float64], intensities: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
+        """Resample using TIC-preserving linear interpolation - optimized."""
+        if mzs.size == 0:
+            return np.zeros(len(self._common_mass_axis))
+
+        # OPTIMIZED: Check if already sorted to avoid unnecessary sorting
+        if np.all(mzs[:-1] <= mzs[1:]):
+            # Already sorted - use directly
+            mzs_sorted = mzs
+            intensities_sorted = intensities
+        else:
+            # Need to sort for interpolation
+            sort_indices = np.argsort(mzs)
+            mzs_sorted = mzs[sort_indices]
+            intensities_sorted = intensities[sort_indices]
+
+        # Interpolate onto the common mass axis (np.interp is highly optimized)
+        resampled = np.interp(
+            self._common_mass_axis,
+            mzs_sorted,
+            intensities_sorted,
+            left=0,
+            right=0,
+        )
+
+        return resampled
+
+    def _process_resampled_spectrum(
+        self,
+        data_structures: Any,
+        coords: Tuple[int, int, int],
+        mz_indices: NDArray[np.int_],
+        intensities: NDArray[np.float64],
+    ) -> None:
+        """Process a spectrum with resampled intensities - to be overridden
+        by subclasses."""
+        # This method should be overridden by specific converters (2D/3D)
+        pass
 
     def _create_sparse_matrix(self) -> sparse.lil_matrix:
         """Create sparse matrix for storing intensity values.
@@ -124,7 +507,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         n_masses = len(self._common_mass_axis)
 
         logging.info(
-            f"Creating sparse matrix with {n_pixels} pixels and {n_masses} mass values"
+            f"Creating sparse matrix with {n_pixels} pixels and "
+            f"{n_masses} mass values"
         )
         return sparse.lil_matrix((n_pixels, n_masses), dtype=np.float64)
 
@@ -211,15 +595,25 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         mz_indices: NDArray[np.int_],
         intensities: NDArray[np.float64],
     ) -> None:
-        """Add intensity data to sparse matrix.
+        """Add intensity data to sparse matrix efficiently.
 
         Args:
-            sparse_matrix: Sparse matrix to update
+            sparse_matrix: Target sparse matrix (lil_matrix for efficient
+                construction)
             pixel_idx: Linear pixel index
             mz_indices: Indices for mass values
             intensities: Intensity values to add
         """
-        sparse_matrix[pixel_idx, mz_indices] = intensities
+        # Filter out zero intensities to maintain sparsity
+        nonzero_mask = intensities != 0.0
+        if not np.any(nonzero_mask):
+            return
+
+        valid_mz_indices = mz_indices[nonzero_mask]
+        valid_intensities = intensities[nonzero_mask]
+
+        # Direct assignment to lil_matrix (simple and robust)
+        sparse_matrix[pixel_idx, valid_mz_indices] = valid_intensities
 
     def _create_pixel_shapes(
         self, adata: AnnData, is_3d: bool = False
@@ -243,7 +637,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         x_coords: NDArray[np.float64] = adata.obs["spatial_x"].values
         y_coords: NDArray[np.float64] = adata.obs["spatial_y"].values
 
-        # Create geometries efficiently - this loop could be optimized but kept for clarity
+        # Create geometries efficiently - this loop could be optimized but
+        # kept for clarity
         half_pixel = self.pixel_size_um / 2
         geometries = []
 
@@ -364,7 +759,8 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
                 self._pixel_size_detection_info
             )
             logging.info(
-                f"Added pixel size detection info: {self._pixel_size_detection_info}"
+                f"Added pixel size detection info: "
+                f"{self._pixel_size_detection_info}"
             )
 
         # Add conversion metadata
@@ -441,17 +837,6 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
     @abstractmethod
     def _create_data_structures(self) -> Dict[str, Any]:
         """Create data structures for the specific converter type."""
-        pass
-
-    @abstractmethod
-    def _process_single_spectrum(
-        self,
-        data_structures: Dict[str, Any],
-        coords: Tuple[int, int, int],
-        mzs: NDArray[np.float64],
-        intensities: NDArray[np.float64],
-    ) -> None:
-        """Process a single spectrum for the specific converter type."""
         pass
 
     @abstractmethod
