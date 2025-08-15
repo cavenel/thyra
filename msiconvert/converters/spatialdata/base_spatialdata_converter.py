@@ -93,9 +93,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
 
         # Validate inputs
         if pixel_size_um <= 0:
-            raise ValueError(
-                f"pixel_size_um must be positive, got {pixel_size_um}"
-            )
+            raise ValueError(f"pixel_size_um must be positive, got {pixel_size_um}")
         if not dataset_id.strip():
             raise ValueError("dataset_id cannot be empty")
 
@@ -105,9 +103,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             pixel_size_detection_info is None
             and "pixel_size_detection_info" in kwargs_filtered
         ):
-            pixel_size_detection_info = kwargs_filtered.pop(
-                "pixel_size_detection_info"
-            )
+            pixel_size_detection_info = kwargs_filtered.pop("pixel_size_detection_info")
 
         super().__init__(
             reader,
@@ -142,9 +138,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
                 metadata = self._get_reader_metadata_for_resampling()
                 tree = ResamplingDecisionTree()
                 detected_method = tree.select_strategy(metadata)
-                logging.info(
-                    f"Auto-detected resampling method: {detected_method}"
-                )
+                logging.info(f"Auto-detected resampling method: {detected_method}")
                 self._resampling_method = detected_method
             except NotImplementedError as e:
                 logging.error(f"Auto-detection failed: {e}")
@@ -197,9 +191,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
                 hasattr(comp_meta, "raw_metadata")
                 and "global_metadata" in comp_meta.raw_metadata
             ):
-                metadata["GlobalMetadata"] = comp_meta.raw_metadata[
-                    "global_metadata"
-                ]
+                metadata["GlobalMetadata"] = comp_meta.raw_metadata["global_metadata"]
                 logging.debug(
                     f"Extracted Bruker GlobalMetadata with keys: "
                     f"{list(metadata['GlobalMetadata'].keys())}"
@@ -208,9 +200,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             # Also extract instrument_info for fallback
             if hasattr(comp_meta, "instrument_info"):
                 metadata["instrument_info"] = comp_meta.instrument_info
-                logging.debug(
-                    f"Extracted instrument_info: {comp_meta.instrument_info}"
-                )
+                logging.debug(f"Extracted instrument_info: {comp_meta.instrument_info}")
 
         except Exception as e:
             logging.debug(f"Could not extract comprehensive metadata: {e}")
@@ -267,12 +257,9 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             )
         else:
             # Fall back to uniform axis
-            mass_axis = builder.build_uniform_axis(
-                min_mz, max_mz, self._target_bins
-            )
+            mass_axis = builder.build_uniform_axis(min_mz, max_mz, self._target_bins)
             logging.info(
-                f"Built uniform mass axis with "
-                f"{len(mass_axis.mz_values)} points"
+                f"Built uniform mass axis with " f"{len(mass_axis.mz_values)} points"
             )
 
         # Override the parent's common mass axis
@@ -306,9 +293,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             # Override pixel size if not provided and available in metadata
             if self.pixel_size_um == 1.0 and essential.pixel_size:
                 self.pixel_size_um = essential.pixel_size[0]
-                logging.info(
-                    f"Using detected pixel size: {self.pixel_size_um} μm"
-                )
+                logging.info(f"Using detected pixel size: {self.pixel_size_um} μm")
 
             # IMPORTANT: Don't overwrite _common_mass_axis if resampling
             # is enabled
@@ -323,8 +308,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
                 self._common_mass_axis = self.reader.get_common_mass_axis()
                 if len(self._common_mass_axis) == 0:
                     raise ValueError(
-                        "Common mass axis is empty. Cannot proceed with "
-                        "conversion."
+                        "Common mass axis is empty. Cannot proceed with " "conversion."
                     )
                 logging.info(
                     f"Using raw mass axis with "
@@ -337,19 +321,13 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
             logging.info(f"Dataset dimensions: {self._dimensions}")
             logging.info(f"Coordinate bounds: {self._coordinate_bounds}")
             logging.info(f"Total spectra: {self._n_spectra}")
-            logging.info(
-                f"Estimated memory: {self._estimated_memory_gb:.2f} GB"
-            )
-            logging.info(
-                f"Common mass axis length: {len(self._common_mass_axis)}"
-            )
+            logging.info(f"Estimated memory: {self._estimated_memory_gb:.2f} GB")
+            logging.info(f"Common mass axis length: {len(self._common_mass_axis)}")
         except Exception as e:
             logging.error(f"Error during initialization: {e}")
             raise
 
-    def _map_mass_to_indices(
-        self, mzs: NDArray[np.float64]
-    ) -> NDArray[np.int_]:
+    def _map_mass_to_indices(self, mzs: NDArray[np.float64]) -> NDArray[np.int_]:
         """Override mass mapping to handle resampling with interpolation."""
         if self._common_mass_axis is None:
             raise ValueError("Common mass axis is not initialized.")
@@ -447,9 +425,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         # Check if left neighbor is closer (when not at boundary)
         mask = indices > 0
         left_indices = indices - 1
-        left_dist = np.abs(
-            self._common_mass_axis[left_indices[mask]] - mzs[mask]
-        )
+        left_dist = np.abs(self._common_mass_axis[left_indices[mask]] - mzs[mask])
         right_dist = np.abs(self._common_mass_axis[indices[mask]] - mzs[mask])
         indices[mask] = np.where(
             left_dist <= right_dist, left_indices[mask], indices[mask]
@@ -557,9 +533,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
                             "region": f"{self.dataset_id}_pixels",
                             "spatial_x": x * self.pixel_size_um,
                             "spatial_y": y * self.pixel_size_um,
-                            "spatial_z": (
-                                z * self.pixel_size_um if n_z > 1 else 0.0
-                            ),
+                            "spatial_z": (z * self.pixel_size_um if n_z > 1 else 0.0),
                         }
                     )
                     pixel_idx += 1
@@ -702,9 +676,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
 
             # Write to disk
             sdata.write(str(self.output_path))
-            logging.info(
-                f"Successfully saved SpatialData to {self.output_path}"
-            )
+            logging.info(f"Successfully saved SpatialData to {self.output_path}")
             return True
         except Exception as e:
             logging.error(f"Error saving SpatialData: {e}")
@@ -747,9 +719,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
         pixel_size_attrs = self._create_pixel_size_attrs()
 
         # Add comprehensive metadata sections
-        self._add_comprehensive_sections(
-            pixel_size_attrs, comprehensive_metadata_obj
-        )
+        self._add_comprehensive_sections(pixel_size_attrs, comprehensive_metadata_obj)
 
         # Update SpatialData attributes
         metadata.attrs.update(pixel_size_attrs)
@@ -838,9 +808,7 @@ class BaseSpatialDataConverter(BaseMSIConverter, ABC):
 
         # Add pixel size detection provenance if available
         if self._pixel_size_detection_info is not None:
-            metadata_dict["pixel_size_provenance"] = (
-                self._pixel_size_detection_info
-            )
+            metadata_dict["pixel_size_provenance"] = self._pixel_size_detection_info
 
         # Add conversion options used
         metadata_dict["conversion_options"] = {
