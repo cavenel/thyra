@@ -18,7 +18,8 @@ if SPATIALDATA_AVAILABLE:
 
 
 class SpatialData2DConverter(BaseSpatialDataConverter):
-    """Converter for MSI data to SpatialData format treating 3D data as separate 2D slices."""
+    """Converter for MSI data to SpatialData format treating 3D data as
+    separate 2D slices."""
 
     def __init__(self, *args, **kwargs):
         """Initialize 2D converter with handle_3d=False."""
@@ -30,7 +31,8 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
         Create data structures for 2D slices format.
 
         Returns:
-            Dict containing tables, shapes, images, and data arrays for 2D slices
+            Dict containing tables, shapes, images, and data arrays for
+            2D slices
         """
         # Return dictionaries to store tables, shapes, and sparse matrices
         tables: Dict[str, Any] = {}
@@ -86,8 +88,8 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
         n_masses = len(self._common_mass_axis)
 
         logging.info(
-            f"Creating sparse matrix for slice z={z_value} with {n_pixels} pixels and "
-            f"{n_masses} mass values"
+            f"Creating sparse matrix for slice z={z_value} with {n_pixels} "
+            f"pixels and {n_masses} mass values"
         )
 
         return sparse.lil_matrix((n_pixels, n_masses), dtype=np.float64)
@@ -166,7 +168,8 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
         Args:
             data_structures: Data structures for storing processed data
             coords: (x, y, z) pixel coordinates
-            mz_indices: Indices in the common mass axis (all indices for resampled)
+            mz_indices: Indices in the common mass axis (all indices for
+            resampled)
             intensities: Resampled intensity values
         """
         if self._dimensions is None:
@@ -272,7 +275,8 @@ class SpatialData2DConverter(BaseSpatialDataConverter):
                 tic_values = slice_data["tic_values"]
                 y_size, x_size = tic_values.shape
 
-                # Add channel dimension to make it (c, y, x) as required by SpatialData
+                # Add channel dimension to make it (c, y, x) as required by
+                # SpatialData
                 tic_values_with_channel = tic_values.reshape(1, y_size, x_size)
 
                 tic_image = xr.DataArray(

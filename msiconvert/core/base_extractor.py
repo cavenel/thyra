@@ -42,7 +42,8 @@ class MetadataExtractor(ABC):
         including format-specific details, acquisition parameters, etc.
 
         Returns:
-            ComprehensiveMetadata: Complete metadata including format-specific details
+            ComprehensiveMetadata: Complete metadata including
+            format-specific details
         """
         pass
 
@@ -57,7 +58,8 @@ class MetadataExtractor(ABC):
             logging.info("Extracting essential metadata...")
             self._essential_cache = self._extract_essential_impl()
             logging.debug(
-                f"Essential metadata extracted: {self._essential_cache.dimensions} dimensions, "
+                f"Essential metadata extracted: "
+                f"{self._essential_cache.dimensions} dimensions, "
                 f"{self._essential_cache.n_spectra} spectra"
             )
         return self._essential_cache
@@ -67,7 +69,8 @@ class MetadataExtractor(ABC):
         Get comprehensive metadata (cached after first call).
 
         Returns:
-            ComprehensiveMetadata: Complete metadata including format-specific details
+            ComprehensiveMetadata: Complete metadata including
+            format-specific details
         """
         if self._comprehensive_cache is None:
             logging.info("Extracting comprehensive metadata...")

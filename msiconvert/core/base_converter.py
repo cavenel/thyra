@@ -287,18 +287,22 @@ class BaseMSIConverter(ABC):
             # Essential metadata for quick access
             "essential_metadata": {
                 "dimensions": comprehensive_metadata.essential.dimensions,
-                "coordinate_bounds": comprehensive_metadata.essential.coordinate_bounds,
+                "coordinate_bounds": (
+                    comprehensive_metadata.essential.coordinate_bounds
+                ),
                 "mass_range": comprehensive_metadata.essential.mass_range,
                 "pixel_size": comprehensive_metadata.essential.pixel_size,
                 "n_spectra": comprehensive_metadata.essential.n_spectra,
-                "estimated_memory_gb": comprehensive_metadata.essential.estimated_memory_gb,
+                "estimated_memory_gb": (
+                    comprehensive_metadata.essential.estimated_memory_gb
+                ),
                 "source_path": comprehensive_metadata.essential.source_path,
                 "is_3d": comprehensive_metadata.essential.is_3d,
-                "has_pixel_size": comprehensive_metadata.essential.has_pixel_size,
+                "has_pixel_size": (comprehensive_metadata.essential.has_pixel_size),
             },
             # Format-specific metadata from source
             "format_specific_metadata": comprehensive_metadata.format_specific,
-            "acquisition_parameters": comprehensive_metadata.acquisition_params,
+            "acquisition_parameters": (comprehensive_metadata.acquisition_params),
             "instrument_information": comprehensive_metadata.instrument_info,
             "raw_metadata": comprehensive_metadata.raw_metadata,
             # Processing statistics

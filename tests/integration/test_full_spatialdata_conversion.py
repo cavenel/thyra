@@ -1,5 +1,6 @@
 """
-Complete end-to-end test of the Bruker Reader with the actual spatialdata_converter.py
+Complete end-to-end test of the Bruker Reader with the actual
+spatialdata_converter.py
 
 This test verifies that:
 1. The Bruker Reader works correctly with the real spatialdata_converter.py

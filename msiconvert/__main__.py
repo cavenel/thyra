@@ -31,8 +31,8 @@ def _create_argument_parser() -> argparse.ArgumentParser:
         "--pixel-size",
         type=float,
         default=None,
-        help="Pixel size in micrometers. If not specified, automatic detection from "
-        "metadata will be attempted. Required if detection fails.",
+        help="Pixel size in micrometers. If not specified, automatic "
+        "detection from metadata will be attempted. Required if fails.",
     )
     parser.add_argument(
         "--handle-3d",
@@ -62,7 +62,8 @@ def _create_argument_parser() -> argparse.ArgumentParser:
         "--resample-method",
         choices=["auto", "nearest_neighbor", "tic_preserving"],
         default="auto",
-        help="Resampling method: auto (detect from metadata), nearest_neighbor (for centroid data), tic_preserving (for profile data)",
+        help="Resampling method: auto (detect from metadata), "
+        "nearest_neighbor (centroid data), tic_preserving (profile data)",
     )
     parser.add_argument(
         "--resample-bins",
@@ -127,7 +128,8 @@ def _check_imzml_requirements(
     ibd_path = input_path.with_suffix(".ibd")
     if not ibd_path.exists():
         parser.error(
-            f"ImzML file requires corresponding .ibd file, but not found: {ibd_path}"
+            f"ImzML file requires corresponding .ibd file, "
+            f"but not found: {ibd_path}"
         )
 
 
@@ -140,7 +142,8 @@ def _check_bruker_requirements(
         and not (input_path / "analysis.tdf").exists()
     ):
         parser.error(
-            f"Bruker .d directory requires analysis.tsf or analysis.tdf file: {input_path}"
+            f"Bruker .d directory requires analysis.tsf or analysis.tdf file: "
+            f"{input_path}"
         )
 
 
@@ -215,7 +218,7 @@ def main() -> None:
     # Log final result
     if success:
         logging.info(
-            f"Conversion completed successfully. Output stored at {args.output}"
+            f"Conversion completed successfully. Output stored at " f"{args.output}"
         )
     else:
         logging.error("Conversion failed.")

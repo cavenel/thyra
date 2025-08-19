@@ -70,7 +70,8 @@ class ImzMLReader(BaseMSIReader):
             imzml_path: Path to the imzML file to parse
 
         Raises:
-            ValueError: If the corresponding .ibd file is not found or metadata parsing fails
+            ValueError: If the corresponding .ibd file is not found or metadata
+                parsing fails
             Exception: If parser initialization fails
         """
         if isinstance(imzml_path, str):
@@ -105,16 +106,18 @@ class ImzMLReader(BaseMSIReader):
         # Determine file mode
         # Determine if file is continuous mode
         self.is_continuous = (
-            "continuous" in self.parser.metadata.file_description.param_by_name  # type: ignore
+            "continuous"
+            in self.parser.metadata.file_description.param_by_name  # type: ignore
         )
         # Determine if file is processed mode
         self.is_processed = (
-            "processed" in self.parser.metadata.file_description.param_by_name  # type: ignore
+            "processed"
+            in self.parser.metadata.file_description.param_by_name  # type: ignore
         )
 
         if self.is_continuous == self.is_processed:
             raise ValueError(
-                "Invalid file mode, expected either 'continuous' or 'processed'."
+                "Invalid file mode, expected either 'continuous' or " "'processed'."
             )
 
         # Cache coordinates if requested
@@ -124,9 +127,11 @@ class ImzMLReader(BaseMSIReader):
     def _cache_all_coordinates(self) -> None:
         """Cache all coordinates for faster access.
 
-        Converts 1-based coordinates from imzML to 0-based coordinates for internal use.
+        Converts 1-based coordinates from imzML to 0-based coordinates for
+        internal use.
         """
-        # Parser should already be initialized when this is called from _initialize_parser
+        # Parser should already be initialized when this is called from
+        # _initialize_parser
 
         logging.info("Caching all coordinates for faster access")
         self._coordinates_cache = {}
@@ -188,7 +193,7 @@ class ImzMLReader(BaseMSIReader):
         """Extract continuous mass axis from processed data."""
         # For processed data, collect unique m/z values across spectra
         logging.info(
-            "Building common mass axis from all unique m/z values (processed mode)"
+            "Building common mass axis from all unique m/z values " "(processed mode)"
         )
 
         total_spectra = len(parser.coordinates)  # type: ignore
@@ -237,7 +242,7 @@ class ImzMLReader(BaseMSIReader):
                 raise ValueError("Failed to extract any m/z values")
 
             logging.info(
-                f"Created common mass axis with {len(unique_mzs)} unique m/z values"
+                f"Created common mass axis with {len(unique_mzs)} unique " f"m/z values"
             )
             return unique_mzs
         except Exception as e:
@@ -314,13 +319,16 @@ class ImzMLReader(BaseMSIReader):
         None,
         None,
     ]:
-        """Iterate through spectra with progress monitoring and batch processing.
+        """Iterate through spectra with progress monitoring and batch
+        processing.
 
-        Maps m/z values to the common mass axis using searchsorted for accurate
+        Maps m/z values to the common mass axis using searchsorted for
+        accurate
         representation in the output data structures.
 
         Args:
-            batch_size: Number of spectra to process in each batch (None for default)
+            batch_size: Number of spectra to process in each batch (None for
+                default)
 
         Yields:
             Tuple containing:
@@ -329,7 +337,8 @@ class ImzMLReader(BaseMSIReader):
                 - NDArray[np.float64]: Intensity values array
 
         Raises:
-            ValueError: If parser is not initialized and no filepath is available
+            ValueError: If parser is not initialized and no filepath is
+                available
         """
         self._ensure_parser_initialized()
 
@@ -342,7 +351,7 @@ class ImzMLReader(BaseMSIReader):
         total_pixels = dimensions[0] * dimensions[1] * dimensions[2]
 
         logging.info(
-            f"Processing {total_spectra} spectra in a grid of {total_pixels} pixels"
+            f"Processing {total_spectra} spectra in a grid of " f"{total_pixels} pixels"
         )
 
         with tqdm(
@@ -365,13 +374,15 @@ class ImzMLReader(BaseMSIReader):
             Dict containing:
                 - mzs: NDArray[np.float64] - common m/z values array
                 - intensities: NDArray[np.float64] - array of intensity arrays
-                - coordinates: List[Tuple[int, int, int]] - list of (x,y,z) coordinates
+                - coordinates: List[Tuple[int, int, int]] - list of (x,y,z)
+                  coordinates
                 - width: int - number of pixels in x dimension
                 - height: int - number of pixels in y dimension
                 - depth: int - number of pixels in z dimension
 
         Raises:
-            ValueError: If parser is not initialized and no filepath is available
+            ValueError: If parser is not initialized and no filepath is
+                available
         """
         self._ensure_parser_initialized()
 

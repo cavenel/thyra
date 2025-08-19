@@ -11,7 +11,8 @@ logger = logging.getLogger(__name__)
 
 
 class BrukerMetadataExtractor(MetadataExtractor):
-    """Bruker-specific metadata extractor with optimized single-query extraction."""
+    """Bruker-specific metadata extractor with optimized single-query
+    extraction."""
 
     def __init__(self, conn: sqlite3.Connection, data_path: Path):
         """
@@ -29,7 +30,8 @@ class BrukerMetadataExtractor(MetadataExtractor):
         """Extract essential metadata with proper coordinate normalization."""
         cursor = self.conn.cursor()
 
-        # Get imaging area bounds from GlobalMetadata for coordinate normalization
+        # Get imaging area bounds from GlobalMetadata for coordinate
+        # normalization
         imaging_bounds_query = """
         SELECT Key, Value FROM GlobalMetadata
         WHERE Key IN ('ImagingAreaMinXIndexPos', 'ImagingAreaMaxXIndexPos',
@@ -102,7 +104,8 @@ class BrukerMetadataExtractor(MetadataExtractor):
             if missing_mass_keys:
                 error_msg = (
                     f"Missing critical mass range bounds in GlobalMetadata: "
-                    f"{', '.join(missing_mass_keys)}. Cannot establish mass range."
+                    f"{', '.join(missing_mass_keys)}. Cannot establish mass "
+                    f"range."
                 )
                 logger.error(error_msg)
                 raise ValueError(error_msg)
@@ -149,7 +152,7 @@ class BrukerMetadataExtractor(MetadataExtractor):
         except sqlite3.OperationalError as e:
             logger.error(f"SQL error extracting essential metadata: {e}")
             raise ValueError(
-                f"Failed to extract essential metadata from Bruker database: {e}"
+                f"Failed to extract essential metadata from Bruker database: " f"{e}"
             )
         except Exception as e:
             logger.error(f"Unexpected error extracting essential metadata: {e}")
@@ -236,7 +239,8 @@ class BrukerMetadataExtractor(MetadataExtractor):
         try:
             cursor.execute(
                 """
-                SELECT DISTINCT LaserPower, LaserFrequency, BeamScanSizeX, BeamScanSizeY, SpotSize
+                SELECT DISTINCT LaserPower, LaserFrequency, BeamScanSizeX, \
+BeamScanSizeY, SpotSize
                 FROM MaldiFrameLaserInfo
                 LIMIT 1
             """
@@ -269,7 +273,7 @@ class BrukerMetadataExtractor(MetadataExtractor):
         """Extract timing parameters from database."""
         try:
             cursor.execute(
-                "SELECT Value FROM GlobalMetadata WHERE Key = 'AcquisitionDateTime'"
+                "SELECT Value FROM GlobalMetadata WHERE Key = " "'AcquisitionDateTime'"
             )
             result = cursor.fetchone()
             if result:

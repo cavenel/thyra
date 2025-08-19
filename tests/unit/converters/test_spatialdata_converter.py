@@ -257,7 +257,7 @@ class TestSpatialDataConverter:
         mock_table_model.parse.return_value = mock_table
 
         # Mock create_pixel_shapes - need to import the base class for patching
-        from msiconvert.converters.spatialdata.base_spatialdata_converter import (
+        from msiconvert.converters.spatialdata.base_spatialdata_converter import (  # noqa: E501
             BaseSpatialDataConverter,
         )
 
@@ -340,7 +340,7 @@ class TestSpatialDataConverter:
         mock_table_model.parse.return_value = mock_table
 
         # Mock create_pixel_shapes - need to import the base class for patching
-        from msiconvert.converters.spatialdata.base_spatialdata_converter import (
+        from msiconvert.converters.spatialdata.base_spatialdata_converter import (  # noqa: E501
             BaseSpatialDataConverter,
         )
 
@@ -390,7 +390,9 @@ class TestSpatialDataConverter:
 
     @patch("msiconvert.converters.spatialdata.base_spatialdata_converter.box")
     @patch("msiconvert.converters.spatialdata.base_spatialdata_converter.gpd")
-    @patch("msiconvert.converters.spatialdata.base_spatialdata_converter.ShapesModel")
+    @patch(
+        "msiconvert.converters.spatialdata.base_spatialdata_converter." "ShapesModel"
+    )
     @patch("msiconvert.converters.spatialdata.base_spatialdata_converter.Identity")
     def test_create_pixel_shapes(
         self,
@@ -414,7 +416,8 @@ class TestSpatialDataConverter:
         mock_gdf = MagicMock()
         mock_gpd.GeoDataFrame.return_value = mock_gdf
 
-        # Ensure box is called for each pixel by implementing its logic directly
+        # Ensure box is called for each pixel by implementing its logic
+        # directly
         box_calls = []
 
         def mock_box_impl(x1, y1, x2, y2):
@@ -431,16 +434,18 @@ class TestSpatialDataConverter:
             index=["p1", "p2", "p3"],
         )
 
-        # Ensure that when obs.index is converted to a list, it returns the correct indices
+        # Ensure that when obs.index is converted to a list, it returns the
+        # correct indices
         mock_adata.obs.index = pd.Index(["p1", "p2", "p3"])
 
         # Force a deterministic length to make the loop run exactly 3 times
         type(mock_adata).__len__ = MagicMock(return_value=3)
 
-        # Patch the implementation's internals to avoid the coordinate extraction issue
+        # Patch the implementation's internals to avoid the coordinate
+        # extraction issue
         with patch(
             "msiconvert.converters.spatialdata.base_spatialdata_converter."
-            "BaseSpatialDataConverter._create_pixel_shapes"
+            "BaseSpatialDataConverter._create_pixel_shapes"  # noqa: E501
         ) as mock_create_shapes:
             mock_create_shapes.return_value = mock_shapes
 
@@ -451,13 +456,15 @@ class TestSpatialDataConverter:
             assert shapes == mock_shapes
             mock_create_shapes.assert_called_once_with(mock_adata, is_3d=False)
 
-    @patch("msiconvert.converters.spatialdata.base_spatialdata_converter.SpatialData")
+    @patch(
+        "msiconvert.converters.spatialdata.base_spatialdata_converter." "SpatialData"
+    )
     def test_save_output(self, mock_spatial_data_class, mock_reader, temp_dir):
         """Test saving output."""
         output_path = temp_dir / "test_output.zarr"
 
         # Import the base class to access the method
-        from msiconvert.converters.spatialdata.base_spatialdata_converter import (
+        from msiconvert.converters.spatialdata.base_spatialdata_converter import (  # noqa: E501
             BaseSpatialDataConverter,
         )
 
@@ -489,7 +496,8 @@ class TestSpatialDataConverter:
         # Set up our mock to use the custom class
         mock_spatial_data_class.side_effect = MockSpatialData
 
-        # Create a simplified test that just verifies the correct behavior directly
+        # Create a simplified test that just verifies the correct behavior
+        # directly
         converter = SpatialDataConverter(mock_reader, output_path)
 
         # Mock the add_metadata method to avoid any issues there
@@ -508,7 +516,8 @@ class TestSpatialDataConverter:
         # Check results
         assert result is True  # The method should return True
 
-        # Don't test the specifics of the mocks, just that the general flow works
+        # Don't test the specifics of the mocks, just that the general flow
+        # works
         assert converter.add_metadata.called
 
     def test_add_metadata(self, mock_reader, temp_dir):
@@ -536,7 +545,9 @@ class TestSpatialDataConverter:
         assert mock_sdata.metadata["conversion_info"]["pixel_size_um"] == 2.0
         assert "conversion_info" in mock_sdata.metadata
 
-    @patch("msiconvert.converters.spatialdata.base_spatialdata_converter.SpatialData")
+    @patch(
+        "msiconvert.converters.spatialdata.base_spatialdata_converter." "SpatialData"
+    )
     def test_convert_end_to_end(self, mock_spatial_data, mock_reader, temp_dir):
         """Test the full conversion process."""
         output_path = temp_dir / "test_output.zarr"
@@ -584,7 +595,8 @@ class TestSpatialDataConverter:
             lambda: mock_essential,
         )
 
-        # Initialize converter without 3D handling - make sure to set the dataset_id
+        # Initialize converter without 3D handling - make sure to set the
+        # dataset_id
         converter = SpatialDataConverter(
             mock_reader,
             output_path,

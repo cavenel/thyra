@@ -1,7 +1,9 @@
-"""Bruker reader implementation combining best features from all implementations.
+"""Bruker reader implementation combining best features from all
+implementations.
 
-This module provides a high-performance, memory-efficient reader for Bruker TSF/TDF
-data formats with lazy loading, intelligent caching, and comprehensive error handling.
+This module provides a high-performance, memory-efficient reader for Bruker
+TSF/TDF data formats with lazy loading, intelligent caching, and comprehensive
+error handling.
 """
 
 import logging
@@ -14,7 +16,8 @@ import numpy as np
 from numpy.typing import NDArray
 from tqdm import tqdm
 
-# Set OpenMP thread limit before any SDK imports to control Bruker DLL threading
+# Set OpenMP thread limit before any SDK imports to control Bruker DLL
+# threading
 if "OMP_NUM_THREADS" not in os.environ:
     os.environ["OMP_NUM_THREADS"] = "4"
     logging.getLogger(__name__).info(
@@ -47,8 +50,10 @@ def build_raw_mass_axis(
 ) -> NDArray[np.float64]:
     """Build raw mass axis from spectra iterator.
 
-    Raw Mass axis in case the user wants the full data. Not recommended for normal use.
-    Future interpolation module will create optimized mass axis using min/max mass + bin width.
+    Raw Mass axis in case the user wants the full data. Not recommended for
+    normal use.
+    Future interpolation module will create optimized mass axis using
+    min/max mass + bin width.
 
     Args:
         spectra_iterator: Iterator yielding (coords, mzs, intensities) tuples
@@ -84,7 +89,8 @@ def _get_frame_coordinates(
                            (x_offset, y_offset, z_offset)
 
     Returns:
-        Tuple of normalized (x, y, z) coordinates (0-based), or None if not found
+        Tuple of normalized (x, y, z) coordinates (0-based), or None if not
+        found
     """
     try:
         with sqlite3.connect(str(db_path)) as conn:
@@ -93,13 +99,15 @@ def _get_frame_coordinates(
             # Check if this is MALDI data
             try:
                 cursor.execute(
-                    "SELECT XIndexPos, YIndexPos FROM MaldiFrameInfo WHERE Frame = ?",
+                    "SELECT XIndexPos, YIndexPos FROM MaldiFrameInfo WHERE "
+                    "Frame = ?",
                     (frame_id,),
                 )
                 result = cursor.fetchone()
                 if result:
                     x, y = result
-                    # Apply coordinate offsets if provided (Bruker-specific normalization)
+                    # Apply coordinate offsets if provided (Bruker-specific
+                    # normalization)
                     if coordinate_offsets:
                         offset_x, offset_y, offset_z = coordinate_offsets
                         return (int(x) - offset_x, int(y) - offset_y, 0)
@@ -109,7 +117,8 @@ def _get_frame_coordinates(
                 # No MALDI table, use generated coordinates
                 pass
 
-            # For non-MALDI data, generate coordinates (simple sequential mapping)
+            # For non-MALDI data, generate coordinates (simple sequential
+            # mapping)
             return (frame_id - 1, 0, 0)
 
     except Exception as e:
@@ -405,7 +414,8 @@ class BrukerReader(BaseMSIReader):
         frame_id: int,
         coordinate_offsets: Optional[Tuple[int, int, int]] = None,
     ) -> Optional[Tuple[int, int, int]]:
-        """Get normalized coordinates for a specific frame using persistent connection.
+        """Get normalized coordinates for a specific frame using persistent
+        connection.
 
         This avoids opening new SQLite connections for every frame.
 
@@ -414,7 +424,8 @@ class BrukerReader(BaseMSIReader):
             coordinate_offsets: Optional coordinate offsets for normalization
 
         Returns:
-            Tuple of normalized (x, y, z) coordinates (0-based), or None if not found
+            Tuple of normalized (x, y, z) coordinates (0-based), or None if not
+            found
         """
         try:
             cursor = self.conn.cursor()
@@ -422,13 +433,15 @@ class BrukerReader(BaseMSIReader):
             # Check if this is MALDI data
             try:
                 cursor.execute(
-                    "SELECT XIndexPos, YIndexPos FROM MaldiFrameInfo WHERE Frame = ?",
+                    "SELECT XIndexPos, YIndexPos FROM MaldiFrameInfo WHERE "
+                    "Frame = ?",
                     (frame_id,),
                 )
                 result = cursor.fetchone()
                 if result:
                     x, y = result
-                    # Apply coordinate offsets if provided (Bruker-specific normalization)
+                    # Apply coordinate offsets if provided (Bruker-specific
+                    # normalization)
                     if coordinate_offsets:
                         offset_x, offset_y, offset_z = coordinate_offsets
                         return (int(x) - offset_x, int(y) - offset_y, 0)
@@ -438,7 +451,8 @@ class BrukerReader(BaseMSIReader):
                 # No MALDI table, use generated coordinates
                 pass
 
-            # For non-MALDI data, generate coordinates (simple sequential mapping)
+            # For non-MALDI data, generate coordinates (simple sequential
+            # mapping)
             return (frame_id - 1, 0, 0)
 
         except Exception as e:
@@ -448,8 +462,9 @@ class BrukerReader(BaseMSIReader):
     def _preload_frame_num_peaks(self) -> Dict[int, int]:
         """Preload NumPeaks values for all frames at initialization.
 
-        This optimization avoids the busy wait loop in SDK by providing exact
-        buffer sizes for spectrum reading, reducing CPU usage from 100% to normal levels.
+        This optimization avoids the busy wait loop in SDK by providing
+        exact buffer sizes for spectrum reading, reducing CPU usage from 100%
+        to normal levels.
 
         Returns:
             Dictionary mapping frame_id -> num_peaks (validated to be <= 65535)
@@ -459,7 +474,8 @@ class BrukerReader(BaseMSIReader):
                 cursor = conn.cursor()
                 cursor.execute("SELECT Id, NumPeaks FROM Frames ORDER BY Id")
 
-                # Use uint16 equivalent for memory efficiency (max 65,535 peaks)
+                # Use uint16 equivalent for memory efficiency (max 65,535
+                # peaks)
                 num_peaks_cache = {}
                 invalid_count = 0
 
@@ -470,17 +486,19 @@ class BrukerReader(BaseMSIReader):
                         invalid_count += 1
                         if invalid_count <= 5:  # Log first few invalid values
                             logger.debug(
-                                f"Invalid NumPeaks value {num_peaks} for frame {frame_id}"
+                                f"Invalid NumPeaks value {num_peaks} for "
+                                f"frame {frame_id}"
                             )
 
                 if invalid_count > 5:
                     logger.debug(
-                        f"... and {invalid_count - 5} more invalid NumPeaks values"
+                        f"... and {invalid_count - 5} more invalid NumPeaks " f"values"
                     )
 
                 memory_mb = len(num_peaks_cache) * 2 / (1024 * 1024)  # uint16 = 2 bytes
                 logger.info(
-                    f"Cached NumPeaks for {len(num_peaks_cache)} frames ({memory_mb:.1f}MB)"
+                    f"Cached NumPeaks for {len(num_peaks_cache)} frames "
+                    f"({memory_mb:.1f}MB)"
                 )
                 return num_peaks_cache
 
@@ -515,8 +533,10 @@ class BrukerReader(BaseMSIReader):
     def shape(self) -> Tuple[int, int, int]:
         """Get spatial dimensions (pixel grid) from metadata extractor.
 
-        Note: This is the spatial pixel grid, not the mass axis dimensions.
-        Mass axis interpolation to common m/z values is handled during conversion.
+        Note: This is the spatial pixel grid, not the mass axis
+        dimensions.
+        Mass axis interpolation to common m/z values is handled during
+        conversion.
 
         Returns:
             Tuple of (x_pixels, y_pixels, z_pixels) spatial dimensions
@@ -528,8 +548,10 @@ class BrukerReader(BaseMSIReader):
     def mass_range(self) -> Tuple[float, float]:
         """Get mass range from metadata extractor.
 
-        Note: This is the acquisition mass range, not the final interpolated axis.
-        The actual common mass axis for interpolation is built from all unique m/z values.
+        Note: This is the acquisition mass range, not the final
+        interpolated axis.
+        The actual common mass axis for interpolation is built from all
+        unique m/z values.
 
         Returns:
             Tuple of (min_mass, max_mass) in m/z units
@@ -550,7 +572,8 @@ class BrukerReader(BaseMSIReader):
         """Return the total number of spectra in the dataset.
 
         Returns:
-            Total number of frames (efficient implementation using cached frame count)
+            Total number of frames (efficient implementation using cached
+            frame count)
         """
         return self._get_frame_count()
 

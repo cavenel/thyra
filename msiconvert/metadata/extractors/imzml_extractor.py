@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class ImzMLMetadataExtractor(MetadataExtractor):
-    """ImzML-specific metadata extractor with optimized two-phase extraction."""
+    """ImzML-specific metadata extractor with optimized two-phase
+    extraction."""
 
     def __init__(self, parser: ImzMLParser, imzml_path: Path):
         """
@@ -54,7 +55,8 @@ class ImzMLMetadataExtractor(MetadataExtractor):
             n_spectra=n_spectra,
             estimated_memory_gb=estimated_memory,
             source_path=str(self.imzml_path),
-            spectrum_type=spectrum_type,  # Add spectrum type to essential metadata
+            spectrum_type=spectrum_type,  # Add spectrum type to essential
+            # metadata
         )
 
     def _extract_comprehensive_impl(self) -> ComprehensiveMetadata:
@@ -166,7 +168,8 @@ class ImzMLMetadataExtractor(MetadataExtractor):
 
     def _estimate_memory(self, n_spectra: int) -> float:
         """Estimate memory usage in GB."""
-        # Rough estimate: assume average 1000 peaks per spectrum, 8 bytes per float
+        # Rough estimate: assume average 1000 peaks per spectrum,
+        # 8 bytes per float
         avg_peaks_per_spectrum = 1000
         bytes_per_value = 8  # float64
         estimated_bytes = (
@@ -208,7 +211,8 @@ class ImzMLMetadataExtractor(MetadataExtractor):
         """Extract acquisition parameters from XML metadata."""
         params = {}
 
-        # Extract pixel size with full XML parsing if not found in fast extraction
+        # Extract pixel size with full XML parsing if not found in fast
+        # extraction
         if not self.get_essential().has_pixel_size:
             pixel_size = self._extract_pixel_size_from_xml()
             if pixel_size:
@@ -317,9 +321,7 @@ class ImzMLMetadataExtractor(MetadataExtractor):
                     accession = elem.get("accession", "")
                     name = elem.get("name", "")
                     if accession == "MS:1000127" and name == "centroid spectrum":
-                        logger.info(
-                            "Detected centroid spectrum from MS:1000127 cvParam"
-                        )
+                        logger.info("Detected centroid spectrum from MS:1000127")
                         return "centroid spectrum"
         except Exception as e:
             logger.debug(f"XML parsing method failed: {e}")
@@ -330,15 +332,18 @@ class ImzMLMetadataExtractor(MetadataExtractor):
         try:
             # Use defusedxml for secure parsing
             import defusedxml.ElementTree as ET
+
             return ET
         except ImportError:
             # Fallback to standard library with warning
             import xml.etree.ElementTree as ET  # nosec B405
+
             logger.warning("defusedxml not available, using xml.etree.ElementTree")
             return ET
 
     def _check_parser_metadata_for_centroid(self) -> Optional[str]:
-        """Check parser metadata for processed flag indicating centroid data."""
+        """Check parser metadata for processed flag indicating centroid
+        data."""
         if not (hasattr(self.parser, "metadata") and self.parser.metadata):
             return None
 
@@ -385,9 +390,7 @@ class ImzMLMetadataExtractor(MetadataExtractor):
                     y_size = float(cvparam.get("value", 0))
 
             if x_size is not None and y_size is not None:
-                logger.info(
-                    f"Detected pixel size from XML: x={x_size} μm, y={y_size} μm"
-                )
+                logger.info(f"Detected pixel size from XML: x={x_size}μm, y={y_size}μm")
                 return (x_size, y_size)
 
         except Exception as e:
