@@ -32,7 +32,8 @@ class MassAxisBuilder:
         Initialize the mass axis builder.
 
         Args:
-            strategy: Building strategy ('auto', 'memory_efficient', 'fast', 'streaming')
+            strategy: Building strategy ('auto', 'memory_efficient',
+                'fast', 'streaming')
             memory_limit_mb: Memory limit for mass axis construction
             progress_callback: Optional callback for progress updates
         """
@@ -57,8 +58,10 @@ class MassAxisBuilder:
         Build common mass axis from a spectra iterator.
 
         Args:
-            spectra_iterator: Iterator yielding (coords, mzs, intensities) tuples
-            total_spectra: Optional total number of spectra for progress tracking
+            spectra_iterator: Iterator yielding (coords, mzs, intensities)
+                tuples
+            total_spectra: Optional total number of spectra for progress
+                tracking
 
         Returns:
             numpy array of unique m/z values in ascending order
@@ -154,7 +157,7 @@ class MassAxisBuilder:
 
         self._stats["unique_masses_found"] = len(unique_mzs)
         logger.info(
-            f"Found {len(unique_mzs)} unique m/z values from {len(all_mzs)} spectra"
+            f"Found {len(unique_mzs)} unique m/z values from " f"{len(all_mzs)} spectra"
         )
 
         return unique_mzs
@@ -260,8 +263,9 @@ class MassAxisBuilder:
                 # Periodically log progress for very large datasets
                 if batch_count % batch_size == 0:
                     logger.debug(
-                        f"Processed {self._stats['total_spectra_processed']} spectra, "
-                        f"found {len(unique_mzs_set)} unique m/z values"
+                        f"Processed {self._stats['total_spectra_processed']} "
+                        f"spectra, found {len(unique_mzs_set)} unique m/z "
+                        f"values"
                     )
 
                 if self.progress_callback:
@@ -315,7 +319,8 @@ class MassAxisBuilder:
         Build mass axis with m/z tolerance for peak consolidation.
 
         Args:
-            spectra_iterator: Iterator yielding (coords, mzs, intensities) tuples
+            spectra_iterator: Iterator yielding (coords, mzs, intensities)
+                tuples
             tolerance_ppm: Mass tolerance in ppm for peak consolidation
             total_spectra: Optional total number of spectra
 
@@ -334,7 +339,8 @@ class MassAxisBuilder:
         consolidated_mzs = self._consolidate_with_tolerance(unique_mzs, tolerance_ppm)
 
         logger.info(
-            f"Consolidated from {len(unique_mzs)} to {len(consolidated_mzs)} m/z values"
+            f"Consolidated from {len(unique_mzs)} to {len(consolidated_mzs)} "
+            f"m/z values"
         )
         return consolidated_mzs
 

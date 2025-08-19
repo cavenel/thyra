@@ -1,24 +1,29 @@
 """
 Metadata handling for MSI data formats.
 
-This module provides a comprehensive metadata system for mass spectrometry imaging (MSI) data,
-featuring two-phase extraction (essential and comprehensive) optimized for interpolation and
+This module provides a comprehensive metadata system for mass spectrometry
+imaging (MSI) data,
+featuring two-phase extraction (essential and comprehensive) optimized for
+interpolation and
 analysis workflows.
 
 Architecture:
-- Two-phase extraction: Fast essential metadata for processing, comprehensive for analysis
+- Two-phase extraction: Fast essential metadata for processing, comprehensive
+  for analysis
 - Format-specific extractors: Optimized for ImzML and Bruker formats
 - Structured data types: Type-safe dataclasses for metadata representation
 - Caching and lazy loading: Efficient metadata access patterns
 
 Core Components:
-- EssentialMetadata: Critical metadata for processing decisions and interpolation setup
+- EssentialMetadata: Critical metadata for processing decisions and
+  interpolation setup
 - ComprehensiveMetadata: Complete metadata including format-specific details
 - MetadataExtractor: Abstract base class for format-specific extractors
 - Format-specific extractors: ImzMLMetadataExtractor, BrukerMetadataExtractor
 
 Example usage:
-    >>> from msiconvert.metadata import EssentialMetadata, ComprehensiveMetadata
+    >>> from msiconvert.metadata import EssentialMetadata, \
+    ...     ComprehensiveMetadata
     >>> from msiconvert.metadata.extractors import ImzMLMetadataExtractor
     >>> from pyimzml.ImzMLParser import ImzMLParser
     >>>
@@ -74,7 +79,8 @@ def create_extractor(format_name: str, *args, **kwargs):
     """
     Factory function to create a metadata extractor for a given format.
 
-    This is a convenience function that combines format detection with extractor creation.
+    This is a convenience function that combines format detection with
+    extractor creation.
 
     Args:
         format_name: Format identifier (e.g., 'imzml', 'bruker', 'tsf', 'tdf')
@@ -117,7 +123,8 @@ def get_metadata_summary(extractor) -> dict:
 
     Example:
         >>> summary = get_metadata_summary(extractor)
-        >>> print(f"Dataset: {summary['dimensions']} pixels, {summary['mass_range']} m/z")
+        >>> print(f"Dataset: {summary['dimensions']} pixels, "
+        ...       f"{summary['mass_range']} m/z")
     """
     essential = extractor.get_essential()
 

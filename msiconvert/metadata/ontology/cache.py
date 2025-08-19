@@ -30,13 +30,13 @@ class OntologyCache:
 
         logger.info(f"Loaded {len(self.terms)} ontology terms")
         logger.info(
-            f"  - MS terms: {len([k for k in self.terms if k.startswith('MS:')])}"
+            f"  - MS: {len([k for k in self.terms if k.startswith('MS:')])} terms"
         )
         logger.info(
-            f"  - IMS terms: {len([k for k in self.terms if k.startswith('IMS:')])}"
+            f"  - IMS: {len([k for k in self.terms if k.startswith('IMS:')])} terms"
         )
         logger.info(
-            f"  - UO terms: {len([k for k in self.terms if k.startswith('UO:')])}"
+            f"  - UO: {len([k for k in self.terms if k.startswith('UO:')])} terms"
         )
 
     def get_term(self, accession: str) -> Optional[Tuple[str, Optional[str]]]:

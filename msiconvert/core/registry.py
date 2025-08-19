@@ -25,7 +25,8 @@ class MSIRegistry:
         with self._lock:
             self._readers[format_name] = reader_class
             logging.info(
-                f"Registered reader {reader_class.__name__} for format '{format_name}'"
+                f"Registered reader {reader_class.__name__} for format "
+                f"'{format_name}'"
             )
 
     def register_converter(
@@ -35,7 +36,8 @@ class MSIRegistry:
         with self._lock:
             self._converters[format_name] = converter_class
             logging.info(
-                f"Registered converter {converter_class.__name__} for format '{format_name}'"
+                f"Registered converter {converter_class.__name__} for format "
+                f"'{format_name}'"
             )
 
     def detect_format(self, input_path: Path) -> str:
@@ -49,7 +51,7 @@ class MSIRegistry:
         if not format_name:
             available = ", ".join(self._extension_to_format.keys())
             raise ValueError(
-                f"Unsupported file extension '{extension}'. Supported: {available}"
+                f"Unsupported file extension '{extension}'. Supported: " f"{available}"
             )
 
         # Minimal validation
@@ -62,7 +64,7 @@ class MSIRegistry:
         elif format_name == "bruker":
             if not input_path.is_dir():
                 raise ValueError(
-                    f"Bruker format requires .d directory, got file: {input_path}"
+                    f"Bruker format requires .d directory, got file: " f"{input_path}"
                 )
             if (
                 not (input_path / "analysis.tsf").exists()
@@ -80,7 +82,7 @@ class MSIRegistry:
             if format_name not in self._readers:
                 available = list(self._readers.keys())
                 raise ValueError(
-                    f"No reader for format '{format_name}'. Available: {available}"
+                    f"No reader for format '{format_name}'. Available: " f"{available}"
                 )
             return self._readers[format_name]
 
@@ -90,7 +92,8 @@ class MSIRegistry:
             if format_name not in self._converters:
                 available = list(self._converters.keys())
                 raise ValueError(
-                    f"No converter for format '{format_name}'. Available: {available}"
+                    f"No converter for format '{format_name}'. Available: "
+                    f"{available}"
                 )
             return self._converters[format_name]
 

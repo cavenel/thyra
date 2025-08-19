@@ -9,16 +9,20 @@ logger = logging.getLogger(__name__)
 
 
 class ResamplingDecisionTree:
-    """Implements decision tree for resampling strategy selection based on instrument metadata."""
+    """Implements decision tree for resampling strategy selection based on
+    instrument metadata."""
 
     def select_strategy(
         self, metadata: Optional[Dict[str, Any]] = None
     ) -> ResamplingMethod:
-        """Automatically select appropriate resampling method based on instrument metadata.
+        """Automatically select appropriate resampling method based on
+        instrument metadata.
 
         Currently implemented:
-        - Bruker timsTOF detection -> NEAREST_NEIGHBOR (optimal for centroid data)
-        - All other instruments -> NotImplementedError (to be implemented in future phases)
+        - Bruker timsTOF detection -> NEAREST_NEIGHBOR (optimal for
+          centroid data)
+        - All other instruments -> NotImplementedError (to be implemented
+          in future phases)
 
         Parameters
         ----------
@@ -37,14 +41,15 @@ class ResamplingDecisionTree:
         """
         if metadata is None:
             raise NotImplementedError(
-                "Automatic strategy selection without metadata not yet implemented. "
-                "Currently only Bruker timsTOF detection is supported."
+                "Automatic strategy selection without metadata not yet "
+                "implemented. Currently only Bruker timsTOF detection is "
+                "supported."
             )
 
         # Check for ImzML centroid spectrum detection (exact cvParam match)
         if self._is_imzml_centroid_spectrum(metadata):
             logger.info(
-                "ImzML centroid spectrum detected, using NEAREST_NEIGHBOR strategy"
+                "ImzML centroid spectrum detected, using NEAREST_NEIGHBOR " "strategy"
             )
             return ResamplingMethod.NEAREST_NEIGHBOR
 
@@ -52,7 +57,8 @@ class ResamplingDecisionTree:
         if self._is_bruker_metadata(metadata):
             if self._detect_timstof_from_bruker_metadata(metadata):
                 logger.info(
-                    "timsTOF detected from Bruker metadata, using NEAREST_NEIGHBOR strategy"
+                    "timsTOF detected from Bruker metadata, using "
+                    "NEAREST_NEIGHBOR strategy"
                 )
                 return ResamplingMethod.NEAREST_NEIGHBOR
 
@@ -60,20 +66,21 @@ class ResamplingDecisionTree:
         instrument_name = self._extract_instrument_name(metadata)
         if instrument_name:
             raise NotImplementedError(
-                f"Automatic strategy selection for instrument '{instrument_name}' "
-                "not yet implemented. Currently only Bruker timsTOF detection is supported. "
-                "Please specify the resampling method manually."
+                f"Automatic strategy selection for instrument "
+                f"'{instrument_name}' not yet implemented. Currently only "
+                f"Bruker timsTOF detection is supported. Please specify the "
+                f"resampling method manually."
             )
         else:
             raise NotImplementedError(
-                "Automatic strategy selection for non-timsTOF instruments not yet implemented. "
-                "Currently only Bruker timsTOF detection is supported. "
-                "Please specify the resampling method manually."
+                "Automatic strategy selection for non-timsTOF instruments not "
+                "yet implemented. Currently only Bruker timsTOF detection is "
+                "supported. Please specify the resampling method manually."
             )
 
     def select_axis_type(self, metadata: Optional[Dict[str, Any]] = None) -> AxisType:
-        """
-        Automatically select appropriate mass axis type based on instrument metadata.
+        """Automatically select appropriate mass axis type based on
+        instrument metadata.
 
         Parameters
         ----------
@@ -96,17 +103,19 @@ class ResamplingDecisionTree:
         # Check for ImzML centroid spectrum detection
         if self._is_imzml_centroid_spectrum(metadata):
             logger.info(
-                "ImzML centroid spectrum detected, using REFLECTOR_TOF axis type"
+                "ImzML centroid spectrum detected, using REFLECTOR_TOF axis " "type"
             )
             return (
                 AxisType.REFLECTOR_TOF
-            )  # Most ImzML centroid data benefits from constant relative resolution
+            )  # Most ImzML centroid data benefits from constant relative
+            # resolution
 
         # Check Bruker GlobalMetadata for timsTOF detection
         if self._is_bruker_metadata(metadata):
             if self._detect_timstof_from_bruker_metadata(metadata):
                 logger.info(
-                    "timsTOF detected from Bruker metadata, using REFLECTOR_TOF axis type"
+                    "timsTOF detected from Bruker metadata, using "
+                    "REFLECTOR_TOF axis type"
                 )
                 return AxisType.REFLECTOR_TOF
 

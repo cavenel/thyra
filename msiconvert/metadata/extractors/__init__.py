@@ -2,15 +2,18 @@
 """
 Format-specific metadata extractors for MSI data.
 
-This module provides specialized metadata extractors for different MSI data formats,
-each optimized for efficient two-phase metadata extraction (essential and comprehensive).
+This module provides specialized metadata extractors for different MSI data
+formats,
+each optimized for efficient two-phase metadata extraction (essential and
+comprehensive).
 
 Available Extractors:
 - ImzMLMetadataExtractor: For ImzML format files
 - BrukerMetadataExtractor: For Bruker TSF/TDF format files
 
 Example usage:
-    >>> from msiconvert.metadata.extractors import ImzMLMetadataExtractor, BrukerMetadataExtractor
+    >>> from msiconvert.metadata.extractors import \
+    ...     ImzMLMetadataExtractor, BrukerMetadataExtractor
     >>> from pyimzml.ImzMLParser import ImzMLParser
     >>>
     >>> # For ImzML files

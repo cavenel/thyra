@@ -50,7 +50,8 @@ class BaseMSIReader(ABC):
         """Return the common mass axis for all spectra.
 
         This method must always return a valid array.
-        If no common mass axis can be created, implementations should raise an exception.
+        If no common mass axis can be created, implementations should raise
+        an exception.
         """
         pass
 
@@ -81,7 +82,8 @@ class BaseMSIReader(ABC):
         intensities: NDArray[np.float64],
         common_axis: NDArray[np.float64],
     ) -> Tuple[NDArray[np.int_], NDArray[np.float64]]:
-        """Map m/z values to indices in the common mass axis with high accuracy.
+        """Map m/z values to indices in the common mass axis with high
+        accuracy.
 
         This method ensures exact mapping of m/z values to the common mass axis
         without interpolation, preserving the original intensity values.
@@ -89,7 +91,8 @@ class BaseMSIReader(ABC):
         Args:
             mzs: NDArray[np.float64] - Array of m/z values
             intensities: NDArray[np.float64] - Array of intensity values
-            common_axis: NDArray[np.float64] - Common mass axis (sorted array of unique m/z values)
+            common_axis: NDArray[np.float64] - Common mass axis (sorted array
+            of unique m/z values)
 
         Returns:
             Tuple of (indices in common mass axis, corresponding intensities)
@@ -104,9 +107,8 @@ class BaseMSIReader(ABC):
         indices = np.clip(indices, 0, len(common_axis) - 1)
 
         # Verify that we're actually finding the right m/z values
-        max_diff = (
-            1e-6  # A very small tolerance threshold for floating point differences
-        )
+        max_diff = 1e-6  # A very small tolerance threshold for floating
+        # point differences
         indices_valid = np.abs(common_axis[indices] - mzs) <= max_diff
 
         # Return only the valid indices and their corresponding intensities

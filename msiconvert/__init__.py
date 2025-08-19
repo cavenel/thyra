@@ -1,8 +1,10 @@
 """
-MSIConverter - Convert Mass Spectrometry Imaging data to SpatialData/Zarr format.
+MSIConverter - Convert Mass Spectrometry Imaging data to SpatialData/Zarr
+format.
 
-This package provides tools for converting MSI data from various formats (ImzML, Bruker)
-into the modern SpatialData/Zarr format with automatic pixel size detection.
+This package provides tools for converting MSI data from various formats
+(ImzML, Bruker) into the modern SpatialData/Zarr format with automatic
+pixel size detection.
 """
 
 # Suppress known warnings from dependencies

@@ -16,7 +16,8 @@ if SPATIALDATA_AVAILABLE:
 
 
 class SpatialData3DConverter(BaseSpatialDataConverter):
-    """Converter for MSI data to SpatialData format as true 3D volume or single 2D slice."""
+    """Converter for MSI data to SpatialData format as true 3D volume or
+    single 2D slice."""
 
     def __init__(self, *args, **kwargs):
         """Initialize 3D converter with handle_3d=True."""
@@ -28,7 +29,8 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
         Create data structures for 3D volume format.
 
         Returns:
-            Dict containing tables, shapes, images, and data arrays for 3D volume
+            Dict containing tables, shapes, images, and data arrays for
+            3D volume
         """
         # Return dictionaries to store tables, shapes, and images
         tables: Dict[str, Any] = {}
@@ -88,7 +90,8 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
         Args:
             data_structures: Data structures for storing processed data
             coords: (x, y, z) pixel coordinates
-            mz_indices: Indices in the common mass axis (all indices for resampled)
+            mz_indices: Indices in the common mass axis (all indices for
+            resampled)
             intensities: Resampled intensity values
         """
         if self._dimensions is None:
@@ -121,7 +124,10 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
 
         # Add to sparse matrix
         self._add_to_sparse_matrix(
-            data_structures["sparse_matrix"], pixel_idx, mz_indices, intensities
+            data_structures["sparse_matrix"],
+            pixel_idx,
+            mz_indices,
+            intensities,
         )
 
         self._non_empty_pixel_count += 1
@@ -143,7 +149,7 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
             # Convert lil_matrix to csr_matrix for efficient access
             sparse_matrix = data_structures["sparse_matrix"].tocsr()
             logging.info(
-                f"Converted sparse matrix: {sparse_matrix.nnz:,} non-zero entries"
+                f"Converted sparse matrix: {sparse_matrix.nnz:,} non-zero " f"entries"
             )
 
             # Create AnnData
@@ -153,7 +159,8 @@ class SpatialData3DConverter(BaseSpatialDataConverter):
                 var=data_structures["var_df"],
             )
 
-            # Add average spectrum to .uns (use total_intensity to match original behavior)
+            # Add average spectrum to .uns (use total_intensity to match
+            # original behavior)
             adata.uns["average_spectrum"] = data_structures["total_intensity"]
 
             # Make sure region column exists and is correct

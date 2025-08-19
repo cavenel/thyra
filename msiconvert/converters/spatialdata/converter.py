@@ -14,7 +14,8 @@ from .spatialdata_3d_converter import SpatialData3DConverter
 class SpatialDataConverter:
     """Factory converter for MSI data to SpatialData format.
 
-    Creates appropriate 2D or 3D converter based on handle_3d parameter and data dimensions.
+    Creates appropriate 2D or 3D converter based on handle_3d parameter and
+    data dimensions.
     """
 
     def __new__(
@@ -28,15 +29,18 @@ class SpatialDataConverter:
         resampling_config: Optional[Dict[str, Any]] = None,
         **kwargs: Any,
     ):
-        """Create appropriate converter based on handle_3d parameter and data dimensions.
+        """Create appropriate converter based on handle_3d parameter and
+        data dimensions.
 
         Args:
             reader: MSI data reader
             output_path: Path for output file
             dataset_id: Identifier for the dataset
             pixel_size_um: Size of each pixel in micrometers
-            handle_3d: Whether to process as 3D data (True) or 2D slices (False)
-            pixel_size_detection_info: Optional metadata about pixel size detection
+            handle_3d: Whether to process as 3D data (True) or 2D slices
+                (False)
+            pixel_size_detection_info: Optional metadata about pixel size
+                detection
             resampling_config: Optional resampling configuration dict
             **kwargs: Additional keyword arguments
 
@@ -89,5 +93,6 @@ if SPATIALDATA_AVAILABLE:
     logging.debug("SpatialDataConverter registered successfully")
 else:
     logging.warning(
-        f"SpatialDataConverter not registered due to dependency issues: {_import_error_msg}"
+        f"SpatialDataConverter not registered due to dependency issues: "
+        f"{_import_error_msg}"
     )

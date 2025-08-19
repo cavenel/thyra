@@ -56,7 +56,7 @@ class ImzMLOntologyValidator:
             term = ONTOLOGY.get_term(accession)
             if term:
                 results["known_terms"] += 1
-                # self.found_terms is now redundant if we use results['term_counts']
+                # self.found_terms redundant with results['term_counts']
             else:
                 results["unknown_terms"] += 1
                 results["unknown_list"].append(
@@ -68,7 +68,7 @@ class ImzMLOntologyValidator:
                     }
                 )
 
-                # This part for tracking context can remain if you find it useful
+                # Context tracking (optional)
                 context = (
                     cv_param.get("..", {}).tag
                     if hasattr(cv_param, "get")
@@ -92,7 +92,7 @@ class ImzMLOntologyValidator:
             (
                 (
                     f"Known terms: {results['known_terms']} "
-                    f"({results['known_terms']/results['total_terms']*100:.1f}%)"
+                    f"({100*results['known_terms']/results['total_terms']:.1f}%)"
                 )
                 if results["total_terms"] > 0
                 else "Known terms: 0 (0.0%)"
@@ -100,7 +100,7 @@ class ImzMLOntologyValidator:
             (
                 (
                     f"Unknown terms: {results['unknown_terms']} "
-                    f"({results['unknown_terms']/results['total_terms']*100:.1f}%)"
+                    f"({100*results['unknown_terms']/results['total_terms']:.1f}%)"
                 )
                 if results["total_terms"] > 0
                 else "Unknown terms: 0 (0.0%)"

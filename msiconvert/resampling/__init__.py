@@ -1,7 +1,8 @@
 """
 Mass axis resampling module for MSI data.
 
-This module provides functionality for resampling mass spectrometry imaging data
+This module provides functionality for resampling mass spectrometry imaging
+data
 to common mass axes, enabling consistent analysis across pixels and datasets.
 """
 
