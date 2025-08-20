@@ -1,6 +1,6 @@
-# MSIConverter
+# Thyra
 
-[![Tests](https://img.shields.io/github/actions/workflow/status/Tomatokeftes/MSIConverter/tests.yml?branch=main&logo=github)](https://github.com/Tomatokeftes/MSIConverter/actions/workflows/tests.yml)
+[![Tests](https://img.shields.io/github/actions/workflow/status/Tomatokeftes/Thyra/tests.yml?branch=main&logo=github)](https://github.com/Tomatokeftes/Thyra/actions/workflows/tests.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -20,18 +20,18 @@ A modern Python library for converting Mass Spectrometry Imaging (MSI) data into
 
 ### Via pip (Recommended)
 ```bash
-pip install msiconvert
+pip install thyra
 ```
 
 ### Via conda
 ```bash
-conda install -c conda-forge msiconvert
+conda install -c conda-forge thyra
 ```
 
 ### From source
 ```bash
-git clone https://github.com/Tomatokeftes/MSIConverter.git
-cd MSIConverter
+git clone https://github.com/Tomatokeftes/thyra.git
+cd thyra
 poetry install
 ```
 
@@ -132,8 +132,8 @@ print(f"Mass channels: {msi_data.var.index}")
 
 ```bash
 # Clone repository
-git clone https://github.com/Tomatokeftes/MSIConverter.git
-cd MSIConverter
+git clone https://github.com/Tomatokeftes/thyra.git
+cd thyra
 
 # Install with development dependencies
 poetry install
@@ -171,7 +171,7 @@ poetry run pre-commit run --all-files
 
 ## 📚 Documentation
 
-- **API Documentation**: [Auto-generated docs](https://github.com/Tomatokeftes/MSIConverter#readme)
+- **API Documentation**: [Auto-generated docs](https://github.com/Tomatokeftes/thyra#readme)
 - **Contributing Guide**: [CONTRIBUTING.md](CONTRIBUTING.md)
 - **Architecture Overview**: [docs/architecture.md](docs/architecture.md)
 - **Changelog**: [CHANGELOG.md](CHANGELOG.md)
@@ -196,20 +196,20 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Issues**: [GitHub Issues](https://github.com/Tomatokeftes/MSIConverter/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/Tomatokeftes/MSIConverter/discussions)
+- **Issues**: [GitHub Issues](https://github.com/Tomatokeftes/thyra/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Tomatokeftes/thyra/discussions)
 - **Email**: t.visvikis@maastrichtuniversity.nl
 
 ## 🏆 Citation
 
-If you use MSIConverter in your research, please cite:
+If you use thyra in your research, please cite:
 
 ```bibtex
 @software{msiconvert2024,
-  title = {MSIConverter: Modern Mass Spectrometry Imaging Data Conversion},
+  title = {thyra: Modern Mass Spectrometry Imaging Data Conversion},
   author = {Visvikis, Theodoros},
   year = {2024},
-  url = {https://github.com/Tomatokeftes/MSIConverter}
+  url = {https://github.com/Tomatokeftes/thyra}
 }
 ```
 
@@ -221,4 +221,4 @@ If you use MSIConverter in your research, please cite:
 
 ---
 
-**MSIConverter** - Bridging traditional MSI formats with modern spatial omics workflows 🔬✨
+**thyra** - Bridging traditional MSI formats with modern spatial omics workflows 🔬✨
