@@ -106,7 +106,7 @@ class BaseMSIConverter(ABC):
             self._estimated_memory_gb = essential.estimated_memory_gb
 
             # Override pixel size if not provided and available in metadata
-            if self.pixel_size_um == 1.0 and essential.pixel_size:
+            if self.pixel_size_um is None and essential.pixel_size:
                 self.pixel_size_um = essential.pixel_size[0]
                 logging.info(f"Using detected pixel size: {self.pixel_size_um} μm")
 
